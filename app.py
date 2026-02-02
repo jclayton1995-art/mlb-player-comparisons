@@ -1,0 +1,389 @@
+"""MLB Player Comparison Tool - Streamlit App."""
+
+import streamlit as st
+import pandas as pd
+from pathlib import Path
+
+from src.data.cache_manager import CacheManager
+from src.data.merger import DataMerger
+from src.similarity.engine import SimilarityEngine
+from src.ui.comparison_view import render_comparison
+
+st.set_page_config(
+    page_title="MLB Player Comparisons",
+    page_icon="⚾",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+
+# Squarespace-inspired CSS
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
+
+    /* Base styles */
+    .stApp {
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #F5F4EF;
+    }
+
+    /* Hide Streamlit elements */
+    #MainMenu, footer, header, .stDeployButton {display: none !important;}
+    .block-container {padding: 1rem 4rem !important; max-width: 100% !important;}
+
+    /* Navigation */
+    .nav {
+        padding: 0.75rem 4rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #E8E6E1;
+        background: #F5F4EF;
+    }
+
+    .nav-brand {
+        font-family: 'DM Serif Display', serif;
+        font-size: 1.25rem;
+        color: #000;
+        letter-spacing: -0.02em;
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 2rem;
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    /* Hero */
+    .hero {
+        padding: 1.5rem 0 1rem;
+        text-align: center;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .hero h1 {
+        font-family: 'DM Serif Display', serif;
+        font-size: 2.5rem;
+        font-weight: 400;
+        color: #000;
+        line-height: 1.1;
+        margin: 0 0 0.5rem 0;
+        letter-spacing: -0.02em;
+    }
+
+    .hero p {
+        font-size: 1rem;
+        color: #666;
+        line-height: 1.5;
+        margin: 0 auto;
+    }
+
+    /* Search section */
+    .search-section {
+        padding: 0 0 1rem;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    /* Streamlit overrides */
+    .stSelectbox > div > div {
+        background: #FFFFFE !important;
+        border: 1px solid #D9D6CF !important;
+        border-radius: 8px !important;
+    }
+
+    .stSelectbox > div > div:focus-within {
+        border-color: #000 !important;
+        box-shadow: none !important;
+    }
+
+    /* Ensure selectbox text is visible */
+    .stSelectbox > div > div > div {
+        color: #000 !important;
+    }
+
+    .stSelectbox input {
+        color: #000 !important;
+    }
+
+    .stSelectbox [data-baseweb="select"] span {
+        color: #000 !important;
+    }
+
+    .stButton > button {
+        background: #000 !important;
+        color: #fff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.75rem 2rem !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        letter-spacing: 0.02em !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .stButton > button:hover {
+        background: #333 !important;
+        transform: translateY(-1px) !important;
+    }
+
+    /* Results */
+    .results-section {
+        padding: 0 0 2rem;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    /* Similarity display */
+    .similarity-display {
+        text-align: center;
+        padding: 2rem 0 3rem;
+    }
+
+    .similarity-eyebrow {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: #999;
+        margin-bottom: 0.75rem;
+    }
+
+    .similarity-score {
+        font-family: 'DM Serif Display', serif;
+        font-size: 5rem;
+        font-weight: 400;
+        color: #000;
+        line-height: 1;
+        letter-spacing: -0.02em;
+    }
+
+    .similarity-label {
+        font-size: 0.9rem;
+        color: #666;
+        margin-top: 0.5rem;
+    }
+
+    /* Other players section */
+    .other-section {
+        padding: 1.5rem 0;
+        max-width: 900px;
+        margin: 0 auto;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .other-header {
+        font-family: 'DM Serif Display', serif;
+        font-size: 1.25rem;
+        color: #000;
+        margin-bottom: 1rem;
+        font-weight: 400;
+    }
+
+    .other-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1rem;
+    }
+
+    .other-card {
+        background: #fafafa;
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s ease;
+    }
+
+    .other-card:hover {
+        background: #f5f5f5;
+    }
+
+    .other-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .other-rank {
+        width: 32px;
+        height: 32px;
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #666;
+    }
+
+    .other-name {
+        font-weight: 600;
+        color: #000;
+    }
+
+    .other-season {
+        color: #999;
+        font-size: 0.85rem;
+    }
+
+    .other-similarity {
+        font-family: 'DM Serif Display', serif;
+        font-size: 1.5rem;
+        color: #000;
+    }
+
+    /* Footer */
+    .footer {
+        padding: 1.5rem;
+        text-align: center;
+        border-top: 1px solid #E8E6E1;
+        background: #ECEAE5;
+        margin-top: 2rem;
+    }
+
+    .footer p {
+        font-size: 0.75rem;
+        color: #999;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+
+@st.cache_data(ttl=3600)
+def load_dataset() -> pd.DataFrame:
+    processed_path = Path("data/processed/full_dataset.parquet")
+    if processed_path.exists():
+        return pd.read_parquet(processed_path)
+    cache_manager = CacheManager()
+    merger = DataMerger(cache_manager=cache_manager)
+    dataset = merger.build_full_dataset(start_year=2015, end_year=2025, min_pa=50)
+    if not dataset.empty:
+        processed_path.parent.mkdir(parents=True, exist_ok=True)
+        dataset.to_parquet(processed_path, index=False)
+    return dataset
+
+
+@st.cache_resource
+def get_similarity_engine(_dataset: pd.DataFrame) -> SimilarityEngine:
+    return SimilarityEngine(_dataset)
+
+
+def get_player_options(dataset: pd.DataFrame) -> dict:
+    players = {}
+    for _, row in dataset.iterrows():
+        if pd.notna(row.get("first_name")) and pd.notna(row.get("last_name")):
+            name = f"{row['first_name']} {row['last_name']}"
+            mlbam_id = int(row["mlbam_id"])
+            season = int(row["season"])
+            if mlbam_id not in players:
+                players[mlbam_id] = {"name": name, "seasons": []}
+            if season not in players[mlbam_id]["seasons"]:
+                players[mlbam_id]["seasons"].append(season)
+    for player_id in players:
+        players[player_id]["seasons"].sort(reverse=True)
+    return players
+
+
+def main():
+    dataset = load_dataset()
+    if dataset.empty:
+        st.error("Unable to load player data.")
+        return
+
+    engine = get_similarity_engine(dataset)
+    player_options = get_player_options(dataset)
+
+    # Initialize session state
+    if "search_player_id" not in st.session_state:
+        st.session_state.search_player_id = None
+    if "search_season" not in st.session_state:
+        st.session_state.search_season = None
+    if "selected_comp_index" not in st.session_state:
+        st.session_state.selected_comp_index = 0
+
+    # Navigation
+    st.markdown("""
+    <div class="nav">
+        <div class="nav-brand">MLB Comps</div>
+        <div class="nav-links">
+            <span>Statcast Era 2015–2025</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Hero
+    st.markdown("""
+    <div class="hero">
+        <h1>MLB Comparison Machine</h1>
+        <p>Find statistically similar player seasons using Statcast data (2015-2025)</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Search
+    st.markdown('<div class="search-section">', unsafe_allow_html=True)
+
+    player_names = sorted([(pid, info["name"]) for pid, info in player_options.items()], key=lambda x: x[1])
+    player_name_to_id = {name: (pid, name) for pid, name in player_names}
+
+    col1, col2, col3 = st.columns([4, 2, 2])
+
+    with col1:
+        selected_player_str = st.selectbox(
+            "Player", options=[""] + list(player_name_to_id.keys()),
+            format_func=lambda x: "Select a player" if x == "" else x,
+            label_visibility="collapsed",
+        )
+
+    selected_player_id = None
+    selected_season = None
+
+    if selected_player_str and selected_player_str in player_name_to_id:
+        selected_player_id, _ = player_name_to_id[selected_player_str]
+        with col2:
+            selected_season = st.selectbox(
+                "Season", options=player_options[selected_player_id]["seasons"],
+                label_visibility="collapsed",
+            )
+        with col3:
+            find_button = st.button("Compare", type="primary", use_container_width=True)
+    else:
+        with col2:
+            st.selectbox("Season", options=["—"], disabled=True, label_visibility="collapsed")
+        with col3:
+            find_button = st.button("Compare", type="primary", disabled=True, use_container_width=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Handle new search
+    if find_button and selected_player_id and selected_season:
+        st.session_state.search_player_id = selected_player_id
+        st.session_state.search_season = selected_season
+        st.session_state.selected_comp_index = 0
+
+    # Results (show if we have a search in session state)
+    if st.session_state.search_player_id and st.session_state.search_season:
+        st.markdown('<div class="results-section">', unsafe_allow_html=True)
+        target_data = engine.get_player_season(st.session_state.search_player_id, st.session_state.search_season)
+        if target_data is None:
+            st.error("Could not find data for this player/season.")
+        else:
+            similar_players = engine.find_similar(st.session_state.search_player_id, st.session_state.search_season, top_n=6, exclude_same_player=True)
+            render_comparison(target_data, similar_players)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Footer
+    st.markdown("""
+    <div class="footer">
+        <p>Data from Baseball Savant & FanGraphs via pybaseball</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+if __name__ == "__main__":
+    main()
