@@ -1,6 +1,6 @@
 """Main similarity engine for finding comparable player-seasons."""
 
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Optional, Dict, Any
 import pandas as pd
 import numpy as np
 
@@ -11,8 +11,11 @@ from ..metrics.definitions import (
     PRIMARY_METRICS,
     SANITY_CHECK_METRIC,
     SANITY_CHECK_TOLERANCE,
+    BATTER_LOWER_IS_BETTER,
+    MetricConfig,
+    PlayerType,
+    get_metric_config,
 )
-from ..metrics.pulled_flyball import PulledFlyBallCalculator
 
 
 class SimilarityEngine:
@@ -22,30 +25,44 @@ class SimilarityEngine:
         self,
         dataset: pd.DataFrame,
         weights: Optional[Dict[str, float]] = None,
-        xwoba_tolerance: float = SANITY_CHECK_TOLERANCE,
+        xwoba_tolerance: Optional[float] = None,
+        config: Optional[MetricConfig] = None,
     ):
         """
         Initialize the similarity engine.
 
         Args:
             dataset: Full dataset of player-seasons with all metrics
-            weights: Custom metric weights (defaults to METRIC_WEIGHTS)
-            xwoba_tolerance: Maximum xwOBA difference for valid comparisons
+            weights: Custom metric weights (defaults to config's weights or METRIC_WEIGHTS)
+            xwoba_tolerance: Maximum sanity check metric difference for valid comparisons
+            config: MetricConfig for player-type-specific settings (defaults to BATTER)
         """
         self.dataset = dataset.copy()
-        self.weights = weights or METRIC_WEIGHTS
-        self.xwoba_tolerance = xwoba_tolerance
+        self.config = config or get_metric_config(PlayerType.BATTER)
+
+        self.weights = weights or self.config.metric_weights
+        self.sanity_tolerance = xwoba_tolerance or self.config.sanity_check_tolerance
+        self.sanity_metric = self.config.sanity_check_metric
+        self.primary_metrics = self.config.primary_metrics
+        self.lower_is_better = self.config.lower_is_better
+        self.result_stats = self.config.result_stats
+        self.is_batter = self.config.player_type == PlayerType.BATTER
 
         self.normalizer = MetricNormalizer()
         self.distance_calc = DistanceCalculator(self.weights)
-        self.pulled_fb_calc = PulledFlyBallCalculator()
+
+        # Only initialize pulled FB calculator for batters
+        self.pulled_fb_calc = None
+        if self.is_batter:
+            from ..metrics.pulled_flyball import PulledFlyBallCalculator
+            self.pulled_fb_calc = PulledFlyBallCalculator()
 
         self._prepare_dataset()
 
     def _prepare_dataset(self) -> None:
         """Prepare the dataset by computing z-scores."""
         available_metrics = [
-            m for m in PRIMARY_METRICS if m in self.dataset.columns
+            m for m in self.primary_metrics if m in self.dataset.columns
         ]
 
         if not available_metrics:
@@ -59,7 +76,6 @@ class SimilarityEngine:
         )
 
         # Estimate max distance from z-score range instead of computing all pairs
-        # Max possible distance = sqrt(sum of weights * max_z_range^2)
         z_ranges = []
         for col in self.z_columns:
             if col in self.dataset.columns:
@@ -69,9 +85,11 @@ class SimilarityEngine:
                     z_ranges.append(z_range)
 
         if z_ranges:
-            total_weight = sum(self.weights.get(c.replace("_z", ""), 1.0) for c in self.z_columns)
+            total_weight = sum(
+                self.weights.get(c.replace("_z", ""), 1.0) for c in self.z_columns
+            )
             avg_range = sum(z_ranges) / len(z_ranges)
-            self.max_distance = avg_range * (total_weight ** 0.5) * 1.5
+            self.max_distance = avg_range * (total_weight**0.5) * 1.5
         else:
             self.max_distance = 10.0
 
@@ -105,32 +123,35 @@ class SimilarityEngine:
         target = self.dataset[target_mask].iloc[0]
 
         candidates = self.dataset.copy()
-
         candidates = candidates[~target_mask]
 
         if exclude_same_player:
             candidates = candidates[candidates["mlbam_id"] != player_id]
 
-        if SANITY_CHECK_METRIC in candidates.columns and SANITY_CHECK_METRIC in target.index:
-            target_xwoba = target[SANITY_CHECK_METRIC]
-            if pd.notna(target_xwoba):
+        # Apply sanity check metric filter
+        if (
+            self.sanity_metric in candidates.columns
+            and self.sanity_metric in target.index
+        ):
+            target_sanity = target[self.sanity_metric]
+            if pd.notna(target_sanity):
                 candidates = candidates[
-                    (candidates[SANITY_CHECK_METRIC] >= target_xwoba - self.xwoba_tolerance)
-                    & (candidates[SANITY_CHECK_METRIC] <= target_xwoba + self.xwoba_tolerance)
+                    (candidates[self.sanity_metric] >= target_sanity - self.sanity_tolerance)
+                    & (candidates[self.sanity_metric] <= target_sanity + self.sanity_tolerance)
                 ]
 
         if candidates.empty:
             return []
 
-        # Filter out candidates missing key metrics from either category
-        # Must have at least 2 batted ball metrics AND 2 plate discipline metrics
-        batted_ball_z = [f"{m}_z" for m in ["exit_velocity", "barrel_pct", "hard_hit_pct", "launch_angle"] if f"{m}_z" in self.z_columns]
-        plate_disc_z = [f"{m}_z" for m in ["chase_rate", "whiff_pct", "k_pct", "bb_pct"] if f"{m}_z" in self.z_columns]
+        # Apply pitcher role filter (starters vs relievers)
+        if not self.is_batter:
+            candidates = self._filter_by_pitcher_role(target, candidates)
 
-        bb_counts = candidates[batted_ball_z].notna().sum(axis=1) if batted_ball_z else 0
-        pd_counts = candidates[plate_disc_z].notna().sum(axis=1) if plate_disc_z else 0
+        if candidates.empty:
+            return []
 
-        candidates = candidates[(bb_counts >= 2) & (pd_counts >= 2)]
+        # Filter out candidates missing key metrics
+        candidates = self._filter_candidates_by_metrics(candidates)
 
         if candidates.empty:
             return []
@@ -170,18 +191,21 @@ class SimilarityEngine:
                 if metric in row:
                     result[metric] = row[metric]
 
-            if SANITY_CHECK_METRIC in row:
-                result[SANITY_CHECK_METRIC] = row[SANITY_CHECK_METRIC]
+            if self.sanity_metric in row:
+                result[self.sanity_metric] = row[self.sanity_metric]
 
             # Add results stats
-            for stat in ["G", "PA", "AVG", "OBP", "SLG", "OPS", "wRC+"]:
+            for stat in self.result_stats:
                 if stat in row and pd.notna(row[stat]):
                     result[stat] = row[stat]
 
-            # Add pulled FB% (calculated on-demand)
-            pulled_fb = self._get_pulled_fb_pct(int(row["mlbam_id"]), int(row["season"]))
-            if pulled_fb is not None:
-                result["pulled_fb_pct"] = pulled_fb
+            # Add pulled FB% for batters (calculated on-demand)
+            if self.is_batter:
+                pulled_fb = self._get_pulled_fb_pct(
+                    int(row["mlbam_id"]), int(row["season"])
+                )
+                if pulled_fb is not None:
+                    result["pulled_fb_pct"] = pulled_fb
 
             # Add percentiles
             result = self._add_percentiles(result)
@@ -190,9 +214,99 @@ class SimilarityEngine:
 
         return results
 
-    def _calculate_percentile(self, metric: str, value: float, season: int, higher_is_better: bool = True) -> float:
+    def _filter_candidates_by_metrics(self, candidates: pd.DataFrame) -> pd.DataFrame:
+        """Filter candidates based on having sufficient metrics."""
+        if self.is_batter:
+            # Must have at least 2 batted ball metrics AND 2 plate discipline metrics
+            batted_ball_z = [
+                f"{m}_z"
+                for m in ["exit_velocity", "barrel_pct", "hard_hit_pct", "launch_angle"]
+                if f"{m}_z" in self.z_columns
+            ]
+            plate_disc_z = [
+                f"{m}_z"
+                for m in ["chase_rate", "whiff_pct", "k_pct", "bb_pct"]
+                if f"{m}_z" in self.z_columns
+            ]
+
+            bb_counts = (
+                candidates[batted_ball_z].notna().sum(axis=1) if batted_ball_z else 0
+            )
+            pd_counts = (
+                candidates[plate_disc_z].notna().sum(axis=1) if plate_disc_z else 0
+            )
+
+            return candidates[(bb_counts >= 2) & (pd_counts >= 2)]
+        else:
+            # Pitchers: Must have at least 2 stuff metrics AND 2 control/results metrics
+            stuff_z = [
+                f"{m}_z"
+                for m in ["k_pct", "whiff_pct", "chase_pct", "stuff_plus"]
+                if f"{m}_z" in self.z_columns
+            ]
+            control_z = [
+                f"{m}_z"
+                for m in ["bb_pct", "xfip", "xera", "zone_pct"]
+                if f"{m}_z" in self.z_columns
+            ]
+
+            stuff_counts = (
+                candidates[stuff_z].notna().sum(axis=1) if stuff_z else 0
+            )
+            control_counts = (
+                candidates[control_z].notna().sum(axis=1) if control_z else 0
+            )
+
+            return candidates[(stuff_counts >= 2) & (control_counts >= 2)]
+
+    def _filter_by_pitcher_role(
+        self, target: pd.Series, candidates: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Filter pitcher candidates to same role (starter vs reliever).
+
+        Role is determined by GS/G ratio (>= 0.5 = starter), not IP.
+        A starter with a small sample (e.g. call-up) still comps TO starters,
+        but comp candidates must have enough IP to be statistically reliable.
+        """
+        from ..metrics.pitcher_definitions import (
+            STARTER_GS_RATIO,
+            MIN_STARTER_COMP_IP,
+        )
+
+        # Determine target's role from GS/G ratio
+        target_g = target.get("G") if "G" in target.index else None
+        target_gs = target.get("GS") if "GS" in target.index else None
+
+        if target_g is None or pd.isna(target_g) or float(target_g) == 0:
+            return candidates
+        if target_gs is None or pd.isna(target_gs):
+            return candidates
+
+        target_is_starter = (float(target_gs) / float(target_g)) >= STARTER_GS_RATIO
+
+        # Classify candidates by GS/G ratio
+        if "G" not in candidates.columns or "GS" not in candidates.columns:
+            return candidates
+
+        cand_g = candidates["G"].fillna(0).astype(float)
+        cand_gs = candidates["GS"].fillna(0).astype(float)
+        cand_is_starter = (cand_gs / cand_g.replace(0, float("nan"))) >= STARTER_GS_RATIO
+
+        if target_is_starter:
+            # Target is a starter → comp to starters with enough IP
+            return candidates[
+                cand_is_starter
+                & (candidates["IP"].fillna(0).astype(float) >= MIN_STARTER_COMP_IP)
+            ]
+        else:
+            # Target is a reliever → comp to relievers
+            return candidates[~cand_is_starter]
+
+    def _calculate_percentile(
+        self, metric: str, value: float, season: int, higher_is_better: bool = True
+    ) -> float:
         """Calculate percentile for a metric value within a specific season."""
-        if value is None or str(value) == 'nan':
+        if value is None or str(value) == "nan":
             return 50.0
 
         if metric not in self.dataset.columns:
@@ -216,9 +330,6 @@ class SimilarityEngine:
 
     def _add_percentiles(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """Add percentile rankings to a player result (within their season)."""
-        # Define which metrics have "lower is better"
-        lower_is_better = {"chase_rate", "whiff_pct", "swstr_pct", "k_pct", "gb_pct"}
-
         season = result.get("season")
         if season is None:
             season = 2024  # fallback
@@ -226,22 +337,22 @@ class SimilarityEngine:
         percentiles = {}
         for metric in self.metrics_used:
             if metric in result and result[metric] is not None:
-                higher_is_better = metric not in lower_is_better
+                higher_is_better = metric not in self.lower_is_better
                 percentiles[f"{metric}_pct"] = self._calculate_percentile(
                     metric, result[metric], season, higher_is_better
                 )
 
-        # Add xwoba percentile
-        if SANITY_CHECK_METRIC in result:
-            percentiles[f"{SANITY_CHECK_METRIC}_pct"] = self._calculate_percentile(
-                SANITY_CHECK_METRIC, result[SANITY_CHECK_METRIC], season, True
+        # Add sanity check metric percentile
+        if self.sanity_metric in result:
+            # For batters, xwoba higher is better; for pitchers, xera lower is better
+            higher_is_better = self.sanity_metric not in self.lower_is_better
+            percentiles[f"{self.sanity_metric}_pct"] = self._calculate_percentile(
+                self.sanity_metric, result[self.sanity_metric], season, higher_is_better
             )
 
-        # Add pulled_fb_pct percentile (higher is better for power hitters)
-        if "pulled_fb_pct" in result and result["pulled_fb_pct"] is not None:
+        # Add pulled_fb_pct percentile for batters (higher is better for power hitters)
+        if self.is_batter and "pulled_fb_pct" in result and result["pulled_fb_pct"] is not None:
             # Estimate percentile based on typical ranges with 17° threshold
-            # Includes FB + LD + popup (Baseball Savant methodology)
-            # ~8% = 1st percentile, ~25% = 99th percentile
             val = result["pulled_fb_pct"]
             pct = min(99, max(1, (val - 8) / 17 * 100))
             percentiles["pulled_fb_pct_pct"] = pct
@@ -251,8 +362,13 @@ class SimilarityEngine:
 
     def _get_pulled_fb_pct(self, player_id: int, season: int) -> Optional[float]:
         """Get pulled FB% for a player-season, calculating if needed."""
+        if not self.is_batter or self.pulled_fb_calc is None:
+            return None
+
         # Check if already in dataset
-        mask = (self.dataset["mlbam_id"] == player_id) & (self.dataset["season"] == season)
+        mask = (self.dataset["mlbam_id"] == player_id) & (
+            self.dataset["season"] == season
+        )
         if mask.any():
             row = self.dataset[mask].iloc[0]
             if "pulled_fb_pct" in row and pd.notna(row["pulled_fb_pct"]):
@@ -290,18 +406,19 @@ class SimilarityEngine:
             if metric in row:
                 result[metric] = row[metric]
 
-        if SANITY_CHECK_METRIC in row:
-            result[SANITY_CHECK_METRIC] = row[SANITY_CHECK_METRIC]
+        if self.sanity_metric in row:
+            result[self.sanity_metric] = row[self.sanity_metric]
 
         # Add results stats
-        for stat in ["G", "PA", "AVG", "OBP", "SLG", "OPS", "wRC+"]:
+        for stat in self.result_stats:
             if stat in row and pd.notna(row[stat]):
                 result[stat] = row[stat]
 
-        # Add pulled FB% (calculated on-demand)
-        pulled_fb = self._get_pulled_fb_pct(int(row["mlbam_id"]), int(row["season"]))
-        if pulled_fb is not None:
-            result["pulled_fb_pct"] = pulled_fb
+        # Add pulled FB% for batters (calculated on-demand)
+        if self.is_batter:
+            pulled_fb = self._get_pulled_fb_pct(int(row["mlbam_id"]), int(row["season"]))
+            if pulled_fb is not None:
+                result["pulled_fb_pct"] = pulled_fb
 
         # Add percentiles
         result = self._add_percentiles(result)
@@ -326,9 +443,8 @@ class SimilarityEngine:
             return pd.DataFrame()
 
         query_lower = name_query.lower()
-        mask = (
-            df["first_name"].str.lower().str.contains(query_lower, na=False)
-            | df["last_name"].str.lower().str.contains(query_lower, na=False)
-        )
+        mask = df["first_name"].str.lower().str.contains(
+            query_lower, na=False
+        ) | df["last_name"].str.lower().str.contains(query_lower, na=False)
 
         return df[mask].sort_values(["last_name", "first_name", "season"])

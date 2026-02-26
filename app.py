@@ -6,8 +6,12 @@ from pathlib import Path
 
 from src.data.cache_manager import CacheManager
 from src.data.merger import DataMerger
+from src.data.pitcher_merger import PitcherDataMerger
 from src.similarity.engine import SimilarityEngine
+from src.similarity.pitch_engine import PitchSimilarityEngine
+from src.metrics.definitions import PlayerType, get_metric_config
 from src.ui.comparison_view import render_comparison
+from src.ui.pitch_model_view import render_pitch_model
 
 st.set_page_config(
     page_title="MLB Player Comparisons",
@@ -19,7 +23,7 @@ st.set_page_config(
 # Squarespace-inspired CSS
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&family=Pacifico&display=swap');
 
     /* Base styles */
     .stApp {
@@ -127,6 +131,37 @@ st.markdown("""
     .stButton > button:hover {
         background: #333 !important;
         transform: translateY(-1px) !important;
+    }
+
+    /* Radio button styling */
+    .stRadio > div {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-bottom: 1rem;
+    }
+
+    .stRadio > div > label {
+        background: #fff;
+        border: 1px solid #D9D6CF;
+        border-radius: 8px;
+        padding: 0.5rem 1.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .stRadio > div > label:hover {
+        border-color: #000;
+    }
+
+    .stRadio > div > label:has(input:checked) {
+        background: #000;
+        color: #fff !important;
+        border-color: #000;
+    }
+
+    .stRadio > div > label:has(input:checked) * {
+        color: #fff !important;
     }
 
     /* Results */
@@ -256,10 +291,16 @@ st.markdown("""
 
 
 @st.cache_data(ttl=3600)
-def load_dataset() -> pd.DataFrame:
-    processed_path = Path("data/processed/full_dataset.parquet")
+def load_batter_dataset() -> pd.DataFrame:
+    """Load batter dataset from parquet file or build it."""
+    processed_path = Path("data/processed/batters.parquet")
     if processed_path.exists():
         return pd.read_parquet(processed_path)
+    # Fallback to old filename for backwards compatibility
+    old_path = Path("data/processed/full_dataset.parquet")
+    if old_path.exists():
+        return pd.read_parquet(old_path)
+    # Build dataset if not found
     cache_manager = CacheManager()
     merger = DataMerger(cache_manager=cache_manager)
     dataset = merger.build_full_dataset(start_year=2015, end_year=2025, min_pa=50)
@@ -269,12 +310,53 @@ def load_dataset() -> pd.DataFrame:
     return dataset
 
 
+@st.cache_data(ttl=3600)
+def load_pitcher_dataset() -> pd.DataFrame:
+    """Load pitcher dataset from parquet file or build it."""
+    processed_path = Path("data/processed/pitchers.parquet")
+    if processed_path.exists():
+        return pd.read_parquet(processed_path)
+    # Build dataset if not found
+    cache_manager = CacheManager()
+    merger = PitcherDataMerger(cache_manager=cache_manager)
+    dataset = merger.build_full_dataset(start_year=2015, end_year=2025, min_ip=30)
+    if not dataset.empty:
+        processed_path.parent.mkdir(parents=True, exist_ok=True)
+        dataset.to_parquet(processed_path, index=False)
+    return dataset
+
+
 @st.cache_resource
-def get_similarity_engine(_dataset: pd.DataFrame) -> SimilarityEngine:
-    return SimilarityEngine(_dataset)
+def get_batter_engine(_dataset: pd.DataFrame) -> SimilarityEngine:
+    """Get similarity engine for batters."""
+    config = get_metric_config(PlayerType.BATTER)
+    return SimilarityEngine(_dataset, config=config)
+
+
+@st.cache_resource
+def get_pitcher_engine(_dataset: pd.DataFrame) -> SimilarityEngine:
+    """Get similarity engine for pitchers."""
+    config = get_metric_config(PlayerType.PITCHER)
+    return SimilarityEngine(_dataset, config=config)
+
+
+@st.cache_data(ttl=3600)
+def load_pitch_model_dataset() -> pd.DataFrame:
+    """Load pitch model dataset from parquet file."""
+    processed_path = Path("data/processed/pitch_models.parquet")
+    if processed_path.exists():
+        return pd.read_parquet(processed_path)
+    return pd.DataFrame()
+
+
+@st.cache_resource
+def get_pitch_engine(_dataset: pd.DataFrame) -> PitchSimilarityEngine:
+    """Get pitch similarity engine."""
+    return PitchSimilarityEngine(_dataset)
 
 
 def get_player_options(dataset: pd.DataFrame) -> dict:
+    """Build dictionary of player options from dataset."""
     players = {}
     for _, row in dataset.iterrows():
         if pd.notna(row.get("first_name")) and pd.notna(row.get("last_name")):
@@ -291,15 +373,9 @@ def get_player_options(dataset: pd.DataFrame) -> dict:
 
 
 def main():
-    dataset = load_dataset()
-    if dataset.empty:
-        st.error("Unable to load player data.")
-        return
-
-    engine = get_similarity_engine(dataset)
-    player_options = get_player_options(dataset)
-
     # Initialize session state
+    if "player_type" not in st.session_state:
+        st.session_state.player_type = "Hitter"
     if "search_player_id" not in st.session_state:
         st.session_state.search_player_id = None
     if "search_season" not in st.session_state:
@@ -320,23 +396,86 @@ def main():
     # Hero
     st.markdown("""
     <div class="hero">
+        <div style="font-family: 'Pacifico', cursive; font-size: 3.2rem; color: #1e2a5a; margin-bottom: -0.75rem; letter-spacing: 0.01em;">Fungo's</div>
         <h1>MLB Comparison Machine</h1>
         <p>Find statistically similar player seasons using Statcast data (2015-2025)</p>
     </div>
+    <div style="max-width: 720px; margin: 0 auto 1rem; text-align: center;">
+        <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 0.75rem 1.25rem; font-size: 0.85rem; color: #664d03; margin-bottom: 0.5rem;">
+            This tool is currently in <strong>BETA</strong>. Expect the site to be slow while final adjustments are made. If you notice issues, bugs or have feedback &mdash; please reach out on X/Twitter <a href="https://x.com/FungoMedia" target="_blank" style="color: #664d03; font-weight: 600;">@FungoMedia</a>. Thanks!
+        </div>
+        <div style="font-size: 0.8rem; color: #666; font-weight: 500;">
+            Follow <a href="https://x.com/FungoMedia" target="_blank" style="color: #1e2a5a; text-decoration: none; font-weight: 600;">@FungoMedia</a> on X/Twitter for more MLB analysis &amp; insights
+        </div>
+    </div>
     """, unsafe_allow_html=True)
 
-    # Search
+    # Player type toggle
     st.markdown('<div class="search-section">', unsafe_allow_html=True)
 
-    player_names = sorted([(pid, info["name"]) for pid, info in player_options.items()], key=lambda x: x[1])
+    # Track previous player type to detect changes
+    prev_player_type = st.session_state.player_type
+
+    player_type = st.radio(
+        "Player Type",
+        options=["Hitter", "Pitcher Profile", "Pitch Model"],
+        horizontal=True,
+        label_visibility="collapsed",
+        key="player_type_radio",
+    )
+
+    # Update session state and reset search if type changed
+    if player_type != prev_player_type:
+        st.session_state.player_type = player_type
+        st.session_state.search_player_id = None
+        st.session_state.search_season = None
+        st.session_state.selected_comp_index = 0
+        st.rerun()
+
+    st.session_state.player_type = player_type
+
+    # Load appropriate dataset and engine
+    pitch_engine = None
+    if player_type == "Hitter":
+        dataset = load_batter_dataset()
+        if dataset.empty:
+            st.error("Unable to load batter data. Run: python scripts/build_dataset.py --type batter")
+            return
+        engine = get_batter_engine(dataset)
+    elif player_type == "Pitcher Profile":
+        dataset = load_pitcher_dataset()
+        if dataset.empty:
+            st.error("Unable to load pitcher data. Run: python scripts/build_dataset.py --type pitcher")
+            return
+        engine = get_pitcher_engine(dataset)
+    else:  # Pitch Model
+        pitch_dataset = load_pitch_model_dataset()
+        if pitch_dataset.empty:
+            st.error("Unable to load pitch model data. Run: python scripts/build_dataset.py --type pitch_model")
+            return
+        pitch_engine = get_pitch_engine(pitch_dataset)
+        # Use pitcher dataset for player list (pitch model has multiple rows per player)
+        dataset = load_pitcher_dataset()
+        if dataset.empty:
+            # Fallback: build player list from pitch model data
+            dataset = pitch_dataset.drop_duplicates(subset=["mlbam_id", "season"])
+        engine = None
+
+    player_options = get_player_options(dataset)
+
+    player_names = sorted(
+        [(pid, info["name"]) for pid, info in player_options.items()],
+        key=lambda x: x[1],
+    )
     player_name_to_id = {name: (pid, name) for pid, name in player_names}
 
     col1, col2, col3 = st.columns([4, 2, 2])
 
     with col1:
         selected_player_str = st.selectbox(
-            "Player", options=[""] + list(player_name_to_id.keys()),
-            format_func=lambda x: "Select a player" if x == "" else x,
+            "Player",
+            options=[""] + list(player_name_to_id.keys()),
+            format_func=lambda x: "Select a pitcher" if x == "" and player_type != "Hitter" else (f"Select a {player_type.lower()}" if x == "" else x),
             label_visibility="collapsed",
         )
 
@@ -347,18 +486,23 @@ def main():
         selected_player_id, _ = player_name_to_id[selected_player_str]
         with col2:
             selected_season = st.selectbox(
-                "Season", options=player_options[selected_player_id]["seasons"],
+                "Season",
+                options=player_options[selected_player_id]["seasons"],
                 label_visibility="collapsed",
             )
         with col3:
             find_button = st.button("Compare", type="primary", use_container_width=True)
     else:
         with col2:
-            st.selectbox("Season", options=["—"], disabled=True, label_visibility="collapsed")
+            st.selectbox(
+                "Season", options=["—"], disabled=True, label_visibility="collapsed"
+            )
         with col3:
-            find_button = st.button("Compare", type="primary", disabled=True, use_container_width=True)
+            find_button = st.button(
+                "Compare", type="primary", disabled=True, use_container_width=True
+            )
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     # Handle new search
     if find_button and selected_player_id and selected_season:
@@ -369,13 +513,42 @@ def main():
     # Results (show if we have a search in session state)
     if st.session_state.search_player_id and st.session_state.search_season:
         st.markdown('<div class="results-section">', unsafe_allow_html=True)
-        target_data = engine.get_player_season(st.session_state.search_player_id, st.session_state.search_season)
-        if target_data is None:
-            st.error("Could not find data for this player/season.")
-        else:
-            similar_players = engine.find_similar(st.session_state.search_player_id, st.session_state.search_season, top_n=6, exclude_same_player=True)
-            render_comparison(target_data, similar_players)
-        st.markdown('</div>', unsafe_allow_html=True)
+
+        if player_type == "Pitch Model" and pitch_engine is not None:
+            # Pitch Model rendering path
+            pitcher_info = pitch_engine.get_pitcher_info(
+                st.session_state.search_player_id, st.session_state.search_season
+            )
+            if pitcher_info is None:
+                st.error("Could not find pitch data for this pitcher/season. Make sure pitch model data is built.")
+            else:
+                pitches = pitch_engine.get_pitcher_pitches(
+                    st.session_state.search_player_id, st.session_state.search_season
+                )
+                similar_pitches = pitch_engine.find_similar_pitches(
+                    st.session_state.search_player_id, st.session_state.search_season,
+                    top_n=4,
+                )
+                render_pitch_model(pitcher_info, pitches, similar_pitches)
+        elif engine is not None:
+            # Standard comparison rendering path (Hitter / Pitcher Profile)
+            target_data = engine.get_player_season(
+                st.session_state.search_player_id, st.session_state.search_season
+            )
+            if target_data is None:
+                st.error("Could not find data for this player/season.")
+            else:
+                # Pass "Pitcher" for Pitcher Profile so the view uses pitcher metrics
+                view_type = "Pitcher" if player_type == "Pitcher Profile" else player_type
+                similar_players = engine.find_similar(
+                    st.session_state.search_player_id,
+                    st.session_state.search_season,
+                    top_n=6,
+                    exclude_same_player=True,
+                )
+                render_comparison(target_data, similar_players, player_type=view_type)
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # Footer
     st.markdown("""

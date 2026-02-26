@@ -1,7 +1,14 @@
 """Metric definitions and weights for similarity calculations."""
 
-from dataclasses import dataclass
-from typing import Dict
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, Set, List, Optional
+
+
+class PlayerType(Enum):
+    """Type of player for comparison."""
+    BATTER = "batter"
+    PITCHER = "pitcher"
 
 
 @dataclass
@@ -181,3 +188,76 @@ PLATE_DISCIPLINE_METRICS = [
 BATTED_BALL_PROFILE_METRICS = [
     "gb_pct",
 ]
+
+# Lower is better metrics for batters (for percentile calculations)
+BATTER_LOWER_IS_BETTER: Set[str] = {
+    "chase_rate",
+    "whiff_pct",
+    "swstr_pct",
+    "k_pct",
+    "gb_pct",
+}
+
+
+@dataclass
+class MetricConfig:
+    """Configuration for player-type-specific metric settings."""
+
+    player_type: PlayerType
+    metric_definitions: Dict[str, MetricDefinition]
+    metric_weights: Dict[str, float]
+    primary_metrics: List[str]
+    sanity_check_metric: str
+    sanity_check_tolerance: float
+    lower_is_better: Set[str]
+    result_stats: List[str] = field(default_factory=list)
+
+    @property
+    def dataset_filename(self) -> str:
+        """Get the parquet filename for this player type."""
+        if self.player_type == PlayerType.BATTER:
+            return "batters.parquet"
+        return "pitchers.parquet"
+
+
+def get_metric_config(player_type: PlayerType) -> MetricConfig:
+    """
+    Get the metric configuration for a player type.
+
+    Args:
+        player_type: BATTER or PITCHER
+
+    Returns:
+        MetricConfig with all settings for the player type
+    """
+    if player_type == PlayerType.BATTER:
+        return MetricConfig(
+            player_type=PlayerType.BATTER,
+            metric_definitions=METRIC_DEFINITIONS,
+            metric_weights=METRIC_WEIGHTS,
+            primary_metrics=PRIMARY_METRICS,
+            sanity_check_metric=SANITY_CHECK_METRIC,
+            sanity_check_tolerance=SANITY_CHECK_TOLERANCE,
+            lower_is_better=BATTER_LOWER_IS_BETTER,
+            result_stats=["G", "PA", "AVG", "OBP", "SLG", "OPS", "wRC+"],
+        )
+    else:
+        # Import pitcher definitions here to avoid circular imports
+        from .pitcher_definitions import (
+            PITCHER_METRIC_DEFINITIONS,
+            PITCHER_METRIC_WEIGHTS,
+            PITCHER_PRIMARY_METRICS,
+            PITCHER_SANITY_CHECK_METRIC,
+            PITCHER_SANITY_CHECK_TOLERANCE,
+            PITCHER_LOWER_IS_BETTER,
+        )
+        return MetricConfig(
+            player_type=PlayerType.PITCHER,
+            metric_definitions=PITCHER_METRIC_DEFINITIONS,
+            metric_weights=PITCHER_METRIC_WEIGHTS,
+            primary_metrics=PITCHER_PRIMARY_METRICS,
+            sanity_check_metric=PITCHER_SANITY_CHECK_METRIC,
+            sanity_check_tolerance=PITCHER_SANITY_CHECK_TOLERANCE,
+            lower_is_better=PITCHER_LOWER_IS_BETTER,
+            result_stats=["G", "GS", "IP", "ERA", "W", "L", "K", "BB", "WHIP", "FIP", "WAR"],
+        )

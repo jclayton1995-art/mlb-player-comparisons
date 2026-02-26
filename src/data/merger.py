@@ -90,8 +90,19 @@ class DataMerger:
                     player_name = merged.loc[idx, "full_name_lower"]
                     player_season = merged.loc[idx, "season"]
 
-                    # Find match in FanGraphs data
+                    # Find match in FanGraphs data (exact full name)
                     fg_match = fg_subset[(fg_subset["fg_name"] == player_name) & (fg_subset["Season"] == player_season)]
+
+                    # Fallback: match by last name only (handles Cam vs Cameron etc.)
+                    if fg_match.empty:
+                        last_name = merged.loc[idx, "last_name"]
+                        if pd.notna(last_name):
+                            last_lower = last_name.lower().strip()
+                            fg_match = fg_subset[
+                                (fg_subset["fg_name"].str.endswith(f" {last_lower}"))
+                                & (fg_subset["Season"] == player_season)
+                            ]
+
                     if not fg_match.empty:
                         for col in fg_cols_available:
                             if col not in ["IDfg", "Season"] and col in fg_match.columns:

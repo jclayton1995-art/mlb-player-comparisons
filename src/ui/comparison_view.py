@@ -32,7 +32,82 @@ def get_player_photo_url(mlbam_id: int) -> str:
     return f"https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/{mlbam_id}/headshot/67/current"
 
 
-def render_player_card(player: Dict[str, Any], card_id: str = "", is_comp: bool = False) -> str:
+# Batter metrics configuration
+BATTER_METRICS_CONFIG = [
+    ("exit_velocity", "Exit Velo", "{:.1f}", " mph"),
+    ("max_exit_velocity", "Max EV", "{:.1f}", " mph"),
+    ("barrel_pct", "Barrel %", "{:.1f}", "%"),
+    ("hard_hit_pct", "Hard Hit %", "{:.1f}", "%"),
+    ("pulled_fb_pct", "Pull Air %", "{:.1f}", "%"),
+    ("xwoba", "xwOBA", "{:.3f}", ""),
+    ("k_pct", "K %", "{:.1f}", "%"),
+    ("bb_pct", "BB %", "{:.1f}", "%"),
+    ("chase_rate", "Chase %", "{:.1f}", "%"),
+    ("zone_contact_pct", "Z-Con %", "{:.1f}", "%"),
+    ("whiff_pct", "Whiff %", "{:.1f}", "%"),
+    ("swstr_pct", "SwStr %", "{:.1f}", "%"),
+    ("gb_pct", "GB %", "{:.1f}", "%"),
+]
+
+# Pitcher metrics configuration
+# Grouped: KPIs -> Ks -> Command -> Damage Control -> Luck
+PITCHER_METRICS_CONFIG = [
+    # KPIs
+    ("xera", "xERA", "{:.2f}", ""),
+    ("xfip", "xFIP", "{:.2f}", ""),
+    ("k_bb_pct", "K-BB %", "{:.1f}", "%"),
+    # Ks
+    ("k_pct", "K %", "{:.1f}", "%"),
+    ("whiff_pct", "Whiff %", "{:.1f}", "%"),
+    ("chase_pct", "Chase %", "{:.1f}", "%"),
+    ("zone_contact_pct", "Z-Con %", "{:.1f}", "%"),
+    ("stuff_plus", "Stuff+", "{:.0f}", ""),
+    # Command
+    ("bb_pct", "BB %", "{:.1f}", "%"),
+    ("zone_pct", "Zone %", "{:.1f}", "%"),
+    ("arm_angle", "Arm Angle", "{:.1f}", "°"),
+    # Damage Control
+    ("hard_hit_pct_against", "Hard Hit %", "{:.1f}", "%"),
+    ("barrel_pct_against", "Barrel %", "{:.1f}", "%"),
+    ("gb_pct", "GB %", "{:.1f}", "%"),
+    # Luck
+    ("babip", "BABIP", "{:.3f}", ""),
+    ("lob_pct", "LOB %", "{:.1f}", "%"),
+]
+
+# Batter results stats
+BATTER_RESULTS_STATS = [
+    ("G", "G", "{:.0f}"),
+    ("PA", "PA", "{:.0f}"),
+    ("AVG", "AVG", "{:.3f}"),
+    ("OBP", "OBP", "{:.3f}"),
+    ("SLG", "SLG", "{:.3f}"),
+    ("OPS", "OPS", "{:.3f}"),
+    ("wRC+", "wRC+", "{:.0f}"),
+]
+
+# Pitcher results stats
+PITCHER_RESULTS_STATS = [
+    ("G", "G", "{:.0f}"),
+    ("GS", "GS", "{:.0f}"),
+    ("IP", "IP", "{:.1f}"),
+    ("ERA", "ERA", "{:.2f}"),
+    ("W", "W", "{:.0f}"),
+    ("L", "L", "{:.0f}"),
+    ("K", "K", "{:.0f}"),
+    ("BB", "BB", "{:.0f}"),
+    ("WHIP", "WHIP", "{:.2f}"),
+    ("FIP", "FIP", "{:.2f}"),
+    ("WAR", "WAR", "{:.1f}"),
+]
+
+
+def render_player_card(
+    player: Dict[str, Any],
+    card_id: str = "",
+    is_comp: bool = False,
+    player_type: str = "Hitter",
+) -> str:
     """Generate HTML for a player card."""
     name = player.get("name", "Unknown")
     season = player.get("season", "")
@@ -48,28 +123,18 @@ def render_player_card(player: Dict[str, Any], card_id: str = "", is_comp: bool 
     label = "Best Match" if is_comp else "Your Player"
     label_color = "#999" if is_comp else "#a0c4e8"
 
-    metrics_config = [
-        ("exit_velocity", "Exit Velo", "{:.1f}", " mph"),
-        ("max_exit_velocity", "Max EV", "{:.1f}", " mph"),
-        ("barrel_pct", "Barrel %", "{:.1f}", "%"),
-        ("hard_hit_pct", "Hard Hit %", "{:.1f}", "%"),
-        ("pulled_fb_pct", "Pull Air %", "{:.1f}", "%"),
-        ("xwoba", "xwOBA", "{:.3f}", ""),
-        ("k_pct", "K %", "{:.1f}", "%"),
-        ("bb_pct", "BB %", "{:.1f}", "%"),
-        ("chase_rate", "Chase %", "{:.1f}", "%"),
-        ("zone_contact_pct", "Z-Con %", "{:.1f}", "%"),
-        ("whiff_pct", "Whiff %", "{:.1f}", "%"),
-        ("swstr_pct", "SwStr %", "{:.1f}", "%"),
-        ("gb_pct", "GB %", "{:.1f}", "%"),
-    ]
+    # Select metrics based on player type
+    if player_type == "Pitcher":
+        metrics_config = PITCHER_METRICS_CONFIG
+    else:
+        metrics_config = BATTER_METRICS_CONFIG
 
     rows_html = ""
     for metric_name, display_name, fmt, suffix in metrics_config:
         value = player.get(metric_name)
         pct = percentiles.get(f"{metric_name}_pct", 50)
 
-        if value is None or str(value) == 'nan':
+        if value is None or str(value) == "nan":
             val_str = "—"
             pct = 50
         else:
@@ -105,25 +170,21 @@ def render_player_card(player: Dict[str, Any], card_id: str = "", is_comp: bool 
     """
 
 
-def render_results_section(player: Dict[str, Any]) -> str:
+def render_results_section(player: Dict[str, Any], player_type: str = "Hitter") -> str:
     """Generate HTML for player results stats."""
     name = player.get("name", "Unknown")
     season = player.get("season", "")
 
-    stats = [
-        ("G", "G", "{:.0f}"),
-        ("PA", "PA", "{:.0f}"),
-        ("AVG", "AVG", "{:.3f}"),
-        ("OBP", "OBP", "{:.3f}"),
-        ("SLG", "SLG", "{:.3f}"),
-        ("OPS", "OPS", "{:.3f}"),
-        ("wRC+", "wRC+", "{:.0f}"),
-    ]
+    # Select stats based on player type
+    if player_type == "Pitcher":
+        stats = PITCHER_RESULTS_STATS
+    else:
+        stats = BATTER_RESULTS_STATS
 
     stats_html = ""
     for key, label, fmt in stats:
         value = player.get(key)
-        if value is None or str(value) == 'nan':
+        if value is None or str(value) == "nan":
             val_str = "—"
         else:
             val_str = fmt.format(float(value))
@@ -142,7 +203,11 @@ def render_results_section(player: Dict[str, Any]) -> str:
     """
 
 
-def render_comparison(target_player: Dict[str, Any], similar_players: List[Dict[str, Any]]) -> None:
+def render_comparison(
+    target_player: Dict[str, Any],
+    similar_players: List[Dict[str, Any]],
+    player_type: str = "Hitter",
+) -> None:
     """Render full comparison view."""
     if not similar_players:
         st.warning("No similar players found.")
@@ -161,16 +226,23 @@ def render_comparison(target_player: Dict[str, Any], similar_players: List[Dict[
     score = top.get("similarity", 0)
 
     # Large similarity score display
-    st.markdown(f"""
+    st.markdown(
+        f"""
     <div style="text-align: center; padding: 0.5rem 0 1rem;">
         <div style="font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2em; color: #999; margin-bottom: 0.25rem;">Similarity Score</div>
         <div style="font-family: 'DM Serif Display', serif; font-size: 5rem; font-weight: 400; color: #000; line-height: 1; letter-spacing: -0.02em;">{score:.1f}%</div>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # Cards HTML
-    left = render_player_card(target_player, "target-card", is_comp=False)
-    right = render_player_card(top, "comp-card", is_comp=True)
+    left = render_player_card(
+        target_player, "target-card", is_comp=False, player_type=player_type
+    )
+    right = render_player_card(
+        top, "comp-card", is_comp=True, player_type=player_type
+    )
 
     html = f"""
     <!DOCTYPE html>
@@ -187,6 +259,26 @@ def render_comparison(target_player: Dict[str, Any], similar_players: List[Dict[
                 display: flex;
                 gap: 1.5rem;
                 padding: 0.5rem 0;
+            }}
+            .card-column {{
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }}
+            .follow-banner {{
+                text-align: center;
+                font-size: 0.75rem;
+                font-weight: 600;
+                color: #666;
+                margin-bottom: 0.5rem;
+                letter-spacing: 0.02em;
+            }}
+            .follow-banner a {{
+                color: #1e2a5a;
+                text-decoration: none;
+            }}
+            .follow-banner a:hover {{
+                text-decoration: underline;
             }}
             .player-card {{
                 flex: 1;
@@ -296,19 +388,33 @@ def render_comparison(target_player: Dict[str, Any], similar_players: List[Dict[
         </style>
     </head>
     <body>
-        <div class="container">{left}{right}</div>
+        <div class="container">
+            <div class="card-column">
+                <div class="follow-banner">Follow <a href="https://x.com/FungoMedia" target="_blank">@FungoMedia</a> on X/Twitter!</div>
+                {left}
+            </div>
+            <div class="card-column">
+                <div class="follow-banner">Follow <a href="https://x.com/FungoMedia" target="_blank">@FungoMedia</a> on X/Twitter!</div>
+                {right}
+            </div>
+        </div>
     </body>
     </html>
     """
 
-    components.html(html, height=720, scrolling=False)
+    # Adjust height based on number of metrics
+    card_height = 750 if player_type == "Hitter" else 900
+    components.html(html, height=card_height, scrolling=False)
 
     # Results stats section
-    st.markdown("""
+    st.markdown(
+        """
     <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #f0f0f0;">
         <div style="font-family: 'DM Serif Display', serif; font-size: 1.25rem; color: #000; margin-bottom: 1rem; font-weight: 400;">Season Results</div>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     results_html = f"""
     <!DOCTYPE html>
@@ -370,22 +476,27 @@ def render_comparison(target_player: Dict[str, Any], similar_players: List[Dict[
     </head>
     <body>
         <div class="results-container">
-            {render_results_section(target_player)}
-            {render_results_section(top)}
+            {render_results_section(target_player, player_type)}
+            {render_results_section(top, player_type)}
         </div>
     </body>
     </html>
     """
 
-    components.html(results_html, height=140, scrolling=False)
+    # Adjust height based on player type (pitchers have more stats that wrap)
+    results_height = 140 if player_type == "Hitter" else 240
+    components.html(results_html, height=results_height, scrolling=False)
 
     # Other similar players (clickable)
     if len(similar_players) > 1:
-        st.markdown("""
+        st.markdown(
+            """
         <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #f0f0f0;">
             <div style="font-family: 'DM Serif Display', serif; font-size: 1.25rem; color: #000; margin-bottom: 1.5rem; font-weight: 400;">Other Similar Seasons</div>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
         # Create columns for clickable cards
         cols = st.columns(min(5, len(similar_players) - 1))
