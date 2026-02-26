@@ -203,6 +203,110 @@ def render_results_section(player: Dict[str, Any], player_type: str = "Hitter") 
     """
 
 
+def _build_mobile_comparison(
+    target: Dict[str, Any],
+    comp: Dict[str, Any],
+    player_type: str,
+) -> str:
+    """Build a unified mobile comparison table — both players on every row."""
+    metrics = PITCHER_METRICS_CONFIG if player_type == "Pitcher" else BATTER_METRICS_CONFIG
+    t_pcts = target.get("percentiles", {})
+    c_pcts = comp.get("percentiles", {})
+
+    rows = ""
+    for metric_name, display_name, fmt, suffix in metrics:
+        t_val = target.get(metric_name)
+        c_val = comp.get(metric_name)
+        t_pct = t_pcts.get(f"{metric_name}_pct", 50)
+        c_pct = c_pcts.get(f"{metric_name}_pct", 50)
+
+        if t_val is None or str(t_val) == "nan":
+            t_str = "—"
+            t_pct = 50
+        else:
+            t_str = f"{fmt.format(t_val)}{suffix}"
+        if c_val is None or str(c_val) == "nan":
+            c_str = "—"
+            c_pct = 50
+        else:
+            c_str = f"{fmt.format(c_val)}{suffix}"
+
+        t_color = get_percentile_color(t_pct)
+        c_color = get_percentile_color(c_pct)
+
+        rows += f"""
+        <tr class="m-row">
+            <td class="m-val">{t_str}</td>
+            <td class="m-pct"><span class="m-pct-badge" style="background:{t_color};">{int(t_pct)}</span></td>
+            <td class="m-stat">{display_name}</td>
+            <td class="m-pct"><span class="m-pct-badge" style="background:{c_color};">{int(c_pct)}</span></td>
+            <td class="m-val">{c_str}</td>
+        </tr>
+        """
+
+    # Results row
+    if player_type == "Pitcher":
+        results_stats = PITCHER_RESULTS_STATS
+    else:
+        results_stats = BATTER_RESULTS_STATS
+
+    results_rows = ""
+    for key, label, fmt_r in results_stats:
+        t_v = target.get(key)
+        c_v = comp.get(key)
+        t_s = "—" if t_v is None or str(t_v) == "nan" else fmt_r.format(float(t_v))
+        c_s = "—" if c_v is None or str(c_v) == "nan" else fmt_r.format(float(c_v))
+        results_rows += f"""
+        <tr class="m-row">
+            <td class="m-val" colspan="2">{t_s}</td>
+            <td class="m-stat">{label}</td>
+            <td class="m-val" colspan="2">{c_s}</td>
+        </tr>
+        """
+
+    t_name = target.get("name", "Unknown")
+    t_season = target.get("season", "")
+    t_photo = get_player_photo_url(target.get("mlbam_id", 0))
+    c_name = comp.get("name", "Unknown")
+    c_season = comp.get("season", "")
+    c_photo = get_player_photo_url(comp.get("mlbam_id", 0))
+    score = comp.get("similarity", 0)
+
+    return f"""
+    <div class="m-card">
+        <div class="m-score">{score:.1f}%<span class="m-score-label">similarity</span></div>
+        <div class="m-header">
+            <div class="m-player m-target">
+                <img src="{t_photo}" class="m-photo m-photo-target" onerror="this.style.display='none'">
+                <div class="m-name">{t_name}</div>
+                <div class="m-season">{t_season}</div>
+            </div>
+            <div class="m-vs">vs</div>
+            <div class="m-player m-comp">
+                <img src="{c_photo}" class="m-photo" onerror="this.style.display='none'">
+                <div class="m-name">{c_name}</div>
+                <div class="m-season">{c_season}</div>
+            </div>
+        </div>
+        <table class="m-table">
+            <thead>
+                <tr class="m-thead-row">
+                    <th class="m-th-val" colspan="2">{t_name.split()[-1]}</th>
+                    <th class="m-th-stat"></th>
+                    <th class="m-th-val" colspan="2">{c_name.split()[-1]}</th>
+                </tr>
+            </thead>
+            <tbody>{rows}</tbody>
+        </table>
+        <div class="m-results-divider">Season Results</div>
+        <table class="m-table">
+            <tbody>{results_rows}</tbody>
+        </table>
+        <div class="m-follow">Follow <a href="https://x.com/FungoMedia" target="_blank">@FungoMedia</a> on X/Twitter!</div>
+    </div>
+    """
+
+
 def render_comparison(
     target_player: Dict[str, Any],
     similar_players: List[Dict[str, Any]],
@@ -233,9 +337,7 @@ def render_comparison(
         .sim-score-label {{ font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2em; color: #999; margin-bottom: 0.25rem; }}
         .sim-score-value {{ font-family: 'DM Serif Display', serif; font-size: 5rem; font-weight: 400; color: #000; line-height: 1; letter-spacing: -0.02em; }}
         @media (max-width: 768px) {{
-            .sim-score-wrapper {{ padding: 0.25rem 0 0.5rem; }}
-            .sim-score-value {{ font-size: 2.5rem; }}
-            .sim-score-label {{ font-size: 0.55rem; }}
+            .sim-score-wrapper {{ display: none; }}
         }}
     </style>
     <div class="sim-score-wrapper">
@@ -254,6 +356,9 @@ def render_comparison(
         top, "comp-card", is_comp=True, player_type=player_type
     )
 
+    # Mobile: unified comparison table
+    mobile_html = _build_mobile_comparison(target_player, top, player_type)
+
     html = f"""
     <!DOCTYPE html>
     <html>
@@ -265,7 +370,9 @@ def render_comparison(
                 font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
                 background: transparent;
             }}
-            .container {{
+
+            /* ── Desktop layout ── */
+            .desktop-layout {{
                 display: flex;
                 gap: 1.5rem;
                 padding: 0.5rem 0;
@@ -396,67 +503,163 @@ def render_comparison(
                 flex-shrink: 0;
             }}
 
-            /* Mobile: keep side-by-side but ultra-compact */
+            /* ── Mobile layout ── */
+            .mobile-layout {{ display: none; }}
+
+            .m-card {{
+                background: #fff;
+                border: 1px solid #e0e0e0;
+                border-radius: 14px;
+                overflow: hidden;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            }}
+            .m-score {{
+                text-align: center;
+                font-family: 'DM Serif Display', serif;
+                font-size: 2.2rem;
+                color: #1e3a5f;
+                padding: 0.75rem 0 0;
+                line-height: 1;
+            }}
+            .m-score-label {{
+                display: block;
+                font-family: 'DM Sans', sans-serif;
+                font-size: 0.55rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.15em;
+                color: #999;
+                margin-top: 0.15rem;
+            }}
+            .m-header {{
+                display: flex;
+                align-items: center;
+                padding: 0.6rem 1rem 0.75rem;
+                gap: 0.5rem;
+            }}
+            .m-player {{
+                flex: 1;
+                text-align: center;
+            }}
+            .m-photo {{
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                object-fit: cover;
+                margin: 0 auto 0.25rem;
+                display: block;
+                background: #f0f0f0;
+                border: 2px solid #e5e5e5;
+            }}
+            .m-photo-target {{
+                border-color: #1e3a5f;
+            }}
+            .m-name {{
+                font-family: 'DM Serif Display', serif;
+                font-size: 0.9rem;
+                color: #000;
+                line-height: 1.15;
+            }}
+            .m-season {{
+                font-size: 0.7rem;
+                color: #888;
+                font-weight: 500;
+            }}
+            .m-vs {{
+                font-size: 0.7rem;
+                font-weight: 700;
+                color: #ccc;
+                text-transform: uppercase;
+                flex-shrink: 0;
+                padding-top: 1rem;
+            }}
+            .m-table {{
+                width: 100%;
+                border-collapse: collapse;
+            }}
+            .m-thead-row th {{
+                padding: 0.35rem 0.4rem 0.25rem;
+                font-size: 0.6rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                color: #aaa;
+                border-bottom: 2px solid #f0f0f0;
+            }}
+            .m-th-stat {{
+                text-align: center;
+            }}
+            .m-th-val {{
+                text-align: center;
+            }}
+            .m-row td {{
+                padding: 0.35rem 0.3rem;
+                border-bottom: 1px solid #f5f5f5;
+            }}
+            .m-row:last-child td {{
+                border-bottom: none;
+            }}
+            .m-stat {{
+                text-align: center;
+                font-size: 0.68rem;
+                font-weight: 600;
+                color: #888;
+                white-space: nowrap;
+            }}
+            .m-val {{
+                text-align: center;
+                font-size: 0.78rem;
+                font-weight: 600;
+                color: #111;
+                font-variant-numeric: tabular-nums;
+            }}
+            .m-pct {{
+                text-align: center;
+                padding: 0.35rem 0.15rem;
+            }}
+            .m-pct-badge {{
+                display: inline-block;
+                min-width: 22px;
+                padding: 1px 4px;
+                border-radius: 3px;
+                font-size: 0.55rem;
+                font-weight: 700;
+                color: #fff;
+                text-align: center;
+            }}
+            .m-results-divider {{
+                text-align: center;
+                font-size: 0.6rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.12em;
+                color: #aaa;
+                padding: 0.6rem 0 0.3rem;
+                border-top: 2px solid #f0f0f0;
+                margin-top: 0.25rem;
+            }}
+            .m-follow {{
+                text-align: center;
+                font-size: 0.6rem;
+                font-weight: 600;
+                color: #999;
+                padding: 0.75rem 0;
+                border-top: 1px solid #f0f0f0;
+                margin-top: 0.25rem;
+            }}
+            .m-follow a {{
+                color: #1e3a5f;
+                text-decoration: none;
+            }}
+
             @media (max-width: 768px) {{
-                .container {{
-                    gap: 0.5rem;
-                }}
-                .follow-banner {{
-                    font-size: 0.6rem;
-                    margin-bottom: 0.25rem;
-                }}
-                .player-card {{
-                    border-radius: 10px;
-                }}
-                .card-top {{
-                    padding: 0.6rem 0.65rem;
-                    gap: 0.5rem;
-                }}
-                .player-photo-wrapper {{
-                    width: 36px;
-                    height: 36px;
-                    border-width: 1.5px;
-                }}
-                .card-label {{
-                    font-size: 0.5rem;
-                    margin-bottom: 0.1rem;
-                    letter-spacing: 0.08em;
-                }}
-                .player-name {{
-                    font-size: 0.85rem;
-                    letter-spacing: -0.01em;
-                }}
-                .player-season {{
-                    font-size: 0.65rem;
-                }}
-                .card-stats {{
-                    padding: 0.2rem 0.5rem 0.5rem;
-                }}
-                .stat-row {{
-                    padding: 0.25rem 0;
-                }}
-                .stat-name {{
-                    width: 52px;
-                    font-size: 0.6rem;
-                }}
-                .stat-value {{
-                    width: 48px;
-                    font-size: 0.65rem;
-                }}
-                .stat-bar {{
-                    display: none;
-                }}
-                .stat-pct {{
-                    min-width: 24px;
-                    height: 18px;
-                    font-size: 0.55rem;
-                    border-radius: 3px;
-                }}
+                .desktop-layout {{ display: none; }}
+                .mobile-layout {{ display: block; }}
             }}
         </style>
     </head>
     <body>
-        <div class="container">
+        <div class="desktop-layout">
             <div class="card-column">
                 <div class="follow-banner">Follow <a href="https://x.com/FungoMedia" target="_blank">@FungoMedia</a> on X/Twitter!</div>
                 {left}
@@ -466,6 +669,19 @@ def render_comparison(
                 {right}
             </div>
         </div>
+        <div class="mobile-layout">
+            {mobile_html}
+        </div>
+        <script>
+            function updateHeight() {{
+                var h = document.documentElement.scrollHeight;
+                window.parent.postMessage({{type: "streamlit:setFrameHeight", height: h}}, "*");
+            }}
+            window.addEventListener('load', updateHeight);
+            window.addEventListener('resize', updateHeight);
+            setTimeout(updateHeight, 200);
+            setTimeout(updateHeight, 800);
+        </script>
     </body>
     </html>
     """
@@ -474,10 +690,14 @@ def render_comparison(
     card_height = 750 if player_type == "Hitter" else 900
     components.html(html, height=card_height, scrolling=False)
 
-    # Results stats section
+    # Results stats section (desktop only — mobile has results built into the card)
     st.markdown(
         """
-    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #f0f0f0;">
+    <style>
+        .desktop-results {{ }}
+        @media (max-width: 768px) {{ .desktop-results {{ display: none !important; }} }}
+    </style>
+    <div class="desktop-results" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #f0f0f0;">
         <div style="font-family: 'DM Serif Display', serif; font-size: 1.25rem; color: #000; margin-bottom: 1rem; font-weight: 400;">Season Results</div>
     </div>
     """,
@@ -540,34 +760,8 @@ def render_comparison(
                 font-weight: 700;
                 color: #000;
             }}
-
-            /* Mobile: compact results */
             @media (max-width: 768px) {{
-                .results-container {{
-                    gap: 0.5rem;
-                }}
-                .results-card {{
-                    padding: 0.75rem;
-                    border-radius: 8px;
-                }}
-                .results-header {{
-                    font-size: 0.75rem;
-                    margin-bottom: 0.5rem;
-                }}
-                .results-grid {{
-                    gap: 0.3rem;
-                }}
-                .result-stat {{
-                    padding: 0.4rem 0.5rem;
-                    min-width: 0;
-                    border-radius: 6px;
-                }}
-                .result-label {{
-                    font-size: 0.55rem;
-                }}
-                .result-value {{
-                    font-size: 0.8rem;
-                }}
+                .results-container {{ display: none; }}
             }}
         </style>
     </head>
@@ -576,6 +770,15 @@ def render_comparison(
             {render_results_section(target_player, player_type)}
             {render_results_section(top, player_type)}
         </div>
+        <script>
+            function updateHeight() {{
+                var h = document.documentElement.scrollHeight;
+                window.parent.postMessage({{type: "streamlit:setFrameHeight", height: h}}, "*");
+            }}
+            window.addEventListener('load', updateHeight);
+            window.addEventListener('resize', updateHeight);
+            setTimeout(updateHeight, 200);
+        </script>
     </body>
     </html>
     """
