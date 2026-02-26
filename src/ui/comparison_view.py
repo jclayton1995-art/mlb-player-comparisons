@@ -228,9 +228,19 @@ def render_comparison(
     # Large similarity score display
     st.markdown(
         f"""
-    <div style="text-align: center; padding: 0.5rem 0 1rem;">
-        <div style="font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2em; color: #999; margin-bottom: 0.25rem;">Similarity Score</div>
-        <div style="font-family: 'DM Serif Display', serif; font-size: 5rem; font-weight: 400; color: #000; line-height: 1; letter-spacing: -0.02em;">{score:.1f}%</div>
+    <style>
+        .sim-score-wrapper {{ text-align: center; padding: 0.5rem 0 1rem; }}
+        .sim-score-label {{ font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2em; color: #999; margin-bottom: 0.25rem; }}
+        .sim-score-value {{ font-family: 'DM Serif Display', serif; font-size: 5rem; font-weight: 400; color: #000; line-height: 1; letter-spacing: -0.02em; }}
+        @media (max-width: 768px) {{
+            .sim-score-wrapper {{ padding: 0.25rem 0 0.5rem; }}
+            .sim-score-value {{ font-size: 2.5rem; }}
+            .sim-score-label {{ font-size: 0.55rem; }}
+        }}
+    </style>
+    <div class="sim-score-wrapper">
+        <div class="sim-score-label">Similarity Score</div>
+        <div class="sim-score-value">{score:.1f}%</div>
     </div>
     """,
         unsafe_allow_html=True,
@@ -386,38 +396,61 @@ def render_comparison(
                 flex-shrink: 0;
             }}
 
-            /* Mobile: stack cards, hide bars, compact layout */
+            /* Mobile: keep side-by-side but ultra-compact */
             @media (max-width: 768px) {{
                 .container {{
-                    flex-direction: column;
-                    gap: 1rem;
+                    gap: 0.5rem;
+                }}
+                .follow-banner {{
+                    font-size: 0.6rem;
+                    margin-bottom: 0.25rem;
+                }}
+                .player-card {{
+                    border-radius: 10px;
+                }}
+                .card-top {{
+                    padding: 0.6rem 0.65rem;
+                    gap: 0.5rem;
+                }}
+                .player-photo-wrapper {{
+                    width: 36px;
+                    height: 36px;
+                    border-width: 1.5px;
+                }}
+                .card-label {{
+                    font-size: 0.5rem;
+                    margin-bottom: 0.1rem;
+                    letter-spacing: 0.08em;
+                }}
+                .player-name {{
+                    font-size: 0.85rem;
+                    letter-spacing: -0.01em;
+                }}
+                .player-season {{
+                    font-size: 0.65rem;
+                }}
+                .card-stats {{
+                    padding: 0.2rem 0.5rem 0.5rem;
+                }}
+                .stat-row {{
+                    padding: 0.25rem 0;
+                }}
+                .stat-name {{
+                    width: 52px;
+                    font-size: 0.6rem;
+                }}
+                .stat-value {{
+                    width: 48px;
+                    font-size: 0.65rem;
                 }}
                 .stat-bar {{
                     display: none;
                 }}
-                .stat-row {{
-                    padding: 0.35rem 0;
-                }}
-                .stat-name {{
-                    flex: 1;
-                    width: auto;
-                }}
-                .stat-value {{
-                    width: auto;
-                    margin-right: 0.5rem;
-                }}
-                .card-stats {{
-                    padding: 0.25rem 1rem 0.75rem;
-                }}
-                .player-name {{
-                    font-size: 1.2rem;
-                }}
-                .card-top {{
-                    padding: 1rem 1.25rem;
-                }}
-                .player-photo-wrapper {{
-                    width: 48px;
-                    height: 48px;
+                .stat-pct {{
+                    min-width: 24px;
+                    height: 18px;
+                    font-size: 0.55rem;
+                    border-radius: 3px;
                 }}
             }}
         </style>
@@ -506,6 +539,35 @@ def render_comparison(
                 font-size: 1.1rem;
                 font-weight: 700;
                 color: #000;
+            }}
+
+            /* Mobile: compact results */
+            @media (max-width: 768px) {{
+                .results-container {{
+                    gap: 0.5rem;
+                }}
+                .results-card {{
+                    padding: 0.75rem;
+                    border-radius: 8px;
+                }}
+                .results-header {{
+                    font-size: 0.75rem;
+                    margin-bottom: 0.5rem;
+                }}
+                .results-grid {{
+                    gap: 0.3rem;
+                }}
+                .result-stat {{
+                    padding: 0.4rem 0.5rem;
+                    min-width: 0;
+                    border-radius: 6px;
+                }}
+                .result-label {{
+                    font-size: 0.55rem;
+                }}
+                .result-value {{
+                    font-size: 0.8rem;
+                }}
             }}
         </style>
     </head>
