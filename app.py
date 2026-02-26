@@ -290,14 +290,17 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+APP_DIR = Path(__file__).resolve().parent
+
+
 @st.cache_data(ttl=3600)
 def load_batter_dataset() -> pd.DataFrame:
     """Load batter dataset from parquet file or build it."""
-    processed_path = Path("data/processed/batters.parquet")
+    processed_path = APP_DIR / "data" / "processed" / "batters.parquet"
     if processed_path.exists():
         return pd.read_parquet(processed_path)
     # Fallback to old filename for backwards compatibility
-    old_path = Path("data/processed/full_dataset.parquet")
+    old_path = APP_DIR / "data" / "processed" / "full_dataset.parquet"
     if old_path.exists():
         return pd.read_parquet(old_path)
     # Build dataset if not found
@@ -313,7 +316,7 @@ def load_batter_dataset() -> pd.DataFrame:
 @st.cache_data(ttl=3600)
 def load_pitcher_dataset() -> pd.DataFrame:
     """Load pitcher dataset from parquet file or build it."""
-    processed_path = Path("data/processed/pitchers.parquet")
+    processed_path = APP_DIR / "data" / "processed" / "pitchers.parquet"
     if processed_path.exists():
         return pd.read_parquet(processed_path)
     # Build dataset if not found
@@ -343,7 +346,7 @@ def get_pitcher_engine(_dataset: pd.DataFrame) -> SimilarityEngine:
 @st.cache_data(ttl=3600)
 def load_pitch_model_dataset() -> pd.DataFrame:
     """Load pitch model dataset from parquet file."""
-    processed_path = Path("data/processed/pitch_models.parquet")
+    processed_path = APP_DIR / "data" / "processed" / "pitch_models.parquet"
     if processed_path.exists():
         return pd.read_parquet(processed_path)
     return pd.DataFrame()
@@ -356,7 +359,7 @@ def get_pitch_engine(_dataset: pd.DataFrame) -> PitchSimilarityEngine:
 
 
 @st.cache_data(ttl=3600)
-def cached_find_similar(_engine, player_id: int, season: int, top_n: int = 6):
+def cached_find_similar(_engine, engine_key: str, player_id: int, season: int, top_n: int = 6):
     """Cache similarity search results."""
     return _engine.find_similar(player_id, season, top_n=top_n, exclude_same_player=True)
 
@@ -368,7 +371,7 @@ def cached_find_similar_pitches(_engine, player_id: int, season: int, top_n: int
 
 
 @st.cache_data(ttl=3600)
-def get_player_options(_dataset: pd.DataFrame) -> dict:
+def get_player_options(_dataset: pd.DataFrame, dataset_key: str = "") -> dict:
     """Build dictionary of player options from dataset."""
     df = _dataset[_dataset["first_name"].notna() & _dataset["last_name"].notna()].copy()
     df["name"] = df["first_name"] + " " + df["last_name"]
@@ -473,7 +476,7 @@ def main():
             dataset = pitch_dataset.drop_duplicates(subset=["mlbam_id", "season"])
         engine = None
 
-    player_options = get_player_options(dataset)
+    player_options = get_player_options(dataset, dataset_key=player_type)
 
     player_names = sorted(
         [(pid, info["name"]) for pid, info in player_options.items()],
@@ -555,6 +558,7 @@ def main():
                 view_type = "Pitcher" if player_type == "Pitcher Profile" else player_type
                 similar_players = cached_find_similar(
                     engine,
+                    player_type,
                     st.session_state.search_player_id,
                     st.session_state.search_season,
                     top_n=6,
