@@ -355,20 +355,32 @@ def get_pitch_engine(_dataset: pd.DataFrame) -> PitchSimilarityEngine:
     return PitchSimilarityEngine(_dataset)
 
 
-def get_player_options(dataset: pd.DataFrame) -> dict:
+@st.cache_data(ttl=3600)
+def cached_find_similar(_engine, player_id: int, season: int, top_n: int = 6):
+    """Cache similarity search results."""
+    return _engine.find_similar(player_id, season, top_n=top_n, exclude_same_player=True)
+
+
+@st.cache_data(ttl=3600)
+def cached_find_similar_pitches(_engine, player_id: int, season: int, top_n: int = 4):
+    """Cache pitch similarity search results."""
+    return _engine.find_similar_pitches(player_id, season, top_n=top_n)
+
+
+@st.cache_data(ttl=3600)
+def get_player_options(_dataset: pd.DataFrame) -> dict:
     """Build dictionary of player options from dataset."""
+    df = _dataset[_dataset["first_name"].notna() & _dataset["last_name"].notna()].copy()
+    df["name"] = df["first_name"] + " " + df["last_name"]
+    df["mlbam_id"] = df["mlbam_id"].astype(int)
+    df["season"] = df["season"].astype(int)
+
     players = {}
-    for _, row in dataset.iterrows():
-        if pd.notna(row.get("first_name")) and pd.notna(row.get("last_name")):
-            name = f"{row['first_name']} {row['last_name']}"
-            mlbam_id = int(row["mlbam_id"])
-            season = int(row["season"])
-            if mlbam_id not in players:
-                players[mlbam_id] = {"name": name, "seasons": []}
-            if season not in players[mlbam_id]["seasons"]:
-                players[mlbam_id]["seasons"].append(season)
-    for player_id in players:
-        players[player_id]["seasons"].sort(reverse=True)
+    for mlbam_id, group in df.groupby("mlbam_id"):
+        players[mlbam_id] = {
+            "name": group.iloc[0]["name"],
+            "seasons": sorted(group["season"].unique().tolist(), reverse=True),
+        }
     return players
 
 
@@ -525,7 +537,8 @@ def main():
                 pitches = pitch_engine.get_pitcher_pitches(
                     st.session_state.search_player_id, st.session_state.search_season
                 )
-                similar_pitches = pitch_engine.find_similar_pitches(
+                similar_pitches = cached_find_similar_pitches(
+                    pitch_engine,
                     st.session_state.search_player_id, st.session_state.search_season,
                     top_n=4,
                 )
@@ -540,11 +553,11 @@ def main():
             else:
                 # Pass "Pitcher" for Pitcher Profile so the view uses pitcher metrics
                 view_type = "Pitcher" if player_type == "Pitcher Profile" else player_type
-                similar_players = engine.find_similar(
+                similar_players = cached_find_similar(
+                    engine,
                     st.session_state.search_player_id,
                     st.session_state.search_season,
                     top_n=6,
-                    exclude_same_player=True,
                 )
                 render_comparison(target_data, similar_players, player_type=view_type)
 
