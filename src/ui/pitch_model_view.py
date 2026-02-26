@@ -386,13 +386,23 @@ def _render_arsenal_overview(
                 {pitch_rows_html}
             </table>
         </div>
+        <script>
+            function updateHeight() {{
+                var h = document.documentElement.scrollHeight;
+                window.parent.postMessage({{type: "streamlit:setFrameHeight", height: h}}, "*");
+            }}
+            window.addEventListener('load', updateHeight);
+            window.addEventListener('resize', updateHeight);
+            setTimeout(updateHeight, 200);
+            setTimeout(updateHeight, 800);
+        </script>
     </body>
     </html>
     """
 
     n_pitches = len(pitches)
     height = 150 + n_pitches * 90
-    components.html(html, height=height, scrolling=False)
+    components.html(html, height=height, scrolling=True)
 
 
 def _render_detailed_comps(
@@ -668,12 +678,22 @@ def _render_detailed_comps(
     </head>
     <body>
         {pitch_sections_html}
+        <script>
+            function updateHeight() {{
+                var h = document.documentElement.scrollHeight;
+                window.parent.postMessage({{type: "streamlit:setFrameHeight", height: h}}, "*");
+            }}
+            window.addEventListener('load', updateHeight);
+            window.addEventListener('resize', updateHeight);
+            setTimeout(updateHeight, 200);
+            setTimeout(updateHeight, 800);
+        </script>
     </body>
     </html>
     """
 
     n_sections = sum(1 for p in pitches if similar_pitches.get(p.get("pitch_type", "")))
-    height = n_sections * 340
+    height = n_sections * 380
     components.html(html, height=height, scrolling=True)
 
 

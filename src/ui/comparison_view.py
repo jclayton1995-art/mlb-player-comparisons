@@ -688,7 +688,7 @@ def render_comparison(
 
     # Adjust height based on number of metrics
     card_height = 750 if player_type == "Hitter" else 900
-    components.html(html, height=card_height, scrolling=False)
+    components.html(html, height=card_height, scrolling=True)
 
     # Results stats section (desktop only — mobile has results built into the card)
     st.markdown(
@@ -784,8 +784,8 @@ def render_comparison(
     """
 
     # Adjust height based on player type (pitchers have more stats that wrap)
-    results_height = 140 if player_type == "Hitter" else 240
-    components.html(results_html, height=results_height, scrolling=False)
+    results_height = 160 if player_type == "Hitter" else 300
+    components.html(results_html, height=results_height, scrolling=True)
 
     # Other similar players (clickable)
     if len(similar_players) > 1:
