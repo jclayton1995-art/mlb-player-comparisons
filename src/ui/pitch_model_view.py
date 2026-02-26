@@ -296,6 +296,72 @@ def _render_arsenal_overview(
             .arsenal-table tr.ar-pitch-row:last-child td {{
                 border-bottom: none;
             }}
+
+            /* Mobile: compact layout for phones */
+            @media (max-width: 768px) {{
+                .arsenal-card {{
+                    max-width: 100%;
+                    border-radius: 10px;
+                }}
+                .arsenal-header {{
+                    padding: 0.85rem 1rem;
+                    gap: 0.75rem;
+                }}
+                .arsenal-photo {{
+                    width: 44px;
+                    height: 44px;
+                }}
+                .arsenal-name {{
+                    font-size: 1.1rem;
+                }}
+                .arsenal-meta {{
+                    font-size: 0.75rem;
+                }}
+                .ar-header-row th {{
+                    font-size: 0.55rem;
+                    padding: 0.4rem 0.25rem 0.3rem;
+                }}
+                .ar-metric-header {{
+                    width: 42px;
+                }}
+                .ar-pitch-row td {{
+                    padding: 0.4rem 0.25rem;
+                }}
+                .ar-badge {{
+                    font-size: 0.55rem;
+                    padding: 0.15rem 0.35rem;
+                }}
+                .ar-name-cell {{
+                    font-size: 0.72rem;
+                }}
+                .ar-metric {{
+                    font-size: 0.72rem;
+                    width: 42px;
+                }}
+                .ar-comp-row td {{
+                    padding: 0.05rem 0.25rem 0.5rem;
+                }}
+                .ar-comp-photo {{
+                    width: 22px;
+                    height: 22px;
+                }}
+                .ar-comp-name {{
+                    font-size: 0.7rem;
+                }}
+                .ar-comp-season {{
+                    font-size: 0.6rem;
+                }}
+                .ar-comp-metric {{
+                    font-size: 0.65rem;
+                    width: 42px;
+                }}
+                .ar-comp-sim {{
+                    font-size: 0.6rem;
+                }}
+                .follow-banner {{
+                    font-size: 0.65rem;
+                }}
+            }}
         </style>
     </head>
     <body>
@@ -545,6 +611,58 @@ def _render_detailed_comps(
                 text-align: center;
                 color: #ccc;
                 flex-shrink: 0;
+            }}
+
+            /* Mobile: stack comp cards vertically */
+            @media (max-width: 768px) {{
+                .dc-row {{
+                    grid-template-columns: 1fr 1fr;
+                    gap: 0.5rem;
+                }}
+                .dc-card {{
+                    padding: 0.65rem 0.75rem;
+                }}
+                .dc-photo {{
+                    width: 28px;
+                    height: 28px;
+                }}
+                .dc-match-name {{
+                    font-size: 0.72rem;
+                }}
+                .dc-match-season {{
+                    font-size: 0.65rem;
+                }}
+                .dc-similarity {{
+                    font-size: 0.85rem;
+                }}
+                .dc-metric-row {{
+                    font-size: 0.65rem;
+                }}
+                .dc-metric-label {{
+                    width: 36px;
+                }}
+                .dc-metric-val {{
+                    width: 46px;
+                }}
+                .dc-metric-arrow {{
+                    width: 16px;
+                }}
+                .dc-hl-spacer {{
+                    width: 36px;
+                }}
+                .dc-hl-spacer-sm {{
+                    width: 16px;
+                }}
+                .dc-hl-label {{
+                    width: 46px;
+                    font-size: 0.5rem;
+                }}
+                .dc-badge {{
+                    font-size: 0.55rem;
+                }}
+                .dc-pitch-name {{
+                    font-size: 0.82rem;
+                }}
             }}
         </style>
     </head>

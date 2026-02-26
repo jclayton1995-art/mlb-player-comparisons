@@ -385,6 +385,41 @@ def render_comparison(
                 color: #fff;
                 flex-shrink: 0;
             }}
+
+            /* Mobile: stack cards, hide bars, compact layout */
+            @media (max-width: 768px) {{
+                .container {{
+                    flex-direction: column;
+                    gap: 1rem;
+                }}
+                .stat-bar {{
+                    display: none;
+                }}
+                .stat-row {{
+                    padding: 0.35rem 0;
+                }}
+                .stat-name {{
+                    flex: 1;
+                    width: auto;
+                }}
+                .stat-value {{
+                    width: auto;
+                    margin-right: 0.5rem;
+                }}
+                .card-stats {{
+                    padding: 0.25rem 1rem 0.75rem;
+                }}
+                .player-name {{
+                    font-size: 1.2rem;
+                }}
+                .card-top {{
+                    padding: 1rem 1.25rem;
+                }}
+                .player-photo-wrapper {{
+                    width: 48px;
+                    height: 48px;
+                }}
+            }}
         </style>
     </head>
     <body>
