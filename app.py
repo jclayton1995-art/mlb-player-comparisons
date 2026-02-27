@@ -476,15 +476,31 @@ def main():
             dataset = pitch_dataset.drop_duplicates(subset=["mlbam_id", "season"])
         engine = None
 
-    # Exclude players that appear in both hitter and pitcher datasets
+    # Exclude overlap players whose primary role doesn't match the selected type.
+    # Many pitchers have batting stats (NL pre-DH) and vice versa — only filter out
+    # players who are clearly the wrong role based on max IP vs max PA.
     if player_type == "Hitter":
         pitcher_ds = load_pitcher_dataset()
-        pitcher_ids = set(pitcher_ds["mlbam_id"].dropna().astype(int)) if not pitcher_ds.empty else set()
-        exclude = frozenset(pitcher_ids)
+        if not pitcher_ds.empty:
+            # Pitchers with significant IP are not real hitters — exclude from hitter dropdown
+            primary_pitchers = set(
+                pitcher_ds[pitcher_ds["IP"] >= 50].groupby("mlbam_id")
+                .filter(lambda g: True)["mlbam_id"].dropna().astype(int)
+            )
+            exclude = primary_pitchers
+        else:
+            exclude = set()
     else:  # Pitcher Profile or Pitch Model
         batter_ds = load_batter_dataset()
-        batter_ids = set(batter_ds["mlbam_id"].dropna().astype(int)) if not batter_ds.empty else set()
-        exclude = frozenset(batter_ids)
+        if not batter_ds.empty:
+            # Hitters with significant PA are not real pitchers — exclude from pitcher dropdown
+            primary_hitters = set(
+                batter_ds[batter_ds["pa"] >= 200].groupby("mlbam_id")
+                .filter(lambda g: True)["mlbam_id"].dropna().astype(int)
+            )
+            exclude = primary_hitters
+        else:
+            exclude = set()
 
     player_options = get_player_options(dataset, dataset_key=player_type)
     player_options = {pid: info for pid, info in player_options.items() if pid not in exclude}
