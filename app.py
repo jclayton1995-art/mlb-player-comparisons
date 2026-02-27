@@ -476,7 +476,18 @@ def main():
             dataset = pitch_dataset.drop_duplicates(subset=["mlbam_id", "season"])
         engine = None
 
+    # Exclude players that appear in both hitter and pitcher datasets
+    if player_type == "Hitter":
+        pitcher_ds = load_pitcher_dataset()
+        pitcher_ids = set(pitcher_ds["mlbam_id"].dropna().astype(int)) if not pitcher_ds.empty else set()
+        exclude = frozenset(pitcher_ids)
+    else:  # Pitcher Profile or Pitch Model
+        batter_ds = load_batter_dataset()
+        batter_ids = set(batter_ds["mlbam_id"].dropna().astype(int)) if not batter_ds.empty else set()
+        exclude = frozenset(batter_ids)
+
     player_options = get_player_options(dataset, dataset_key=player_type)
+    player_options = {pid: info for pid, info in player_options.items() if pid not in exclude}
 
     player_names = sorted(
         [(pid, info["name"]) for pid, info in player_options.items()],
@@ -540,11 +551,20 @@ def main():
                 pitches = pitch_engine.get_pitcher_pitches(
                     st.session_state.search_player_id, st.session_state.search_season
                 )
+                spinner_placeholder = st.empty()
+                spinner_placeholder.markdown(
+                    '<div style="text-align:center; padding: 2rem 0;">'
+                    '<div style="font-size: 2.5rem; animation: spin 1s linear infinite; display: inline-block;">&#9918;</div>'
+                    '<style>@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }</style>'
+                    '</div>',
+                    unsafe_allow_html=True,
+                )
                 similar_pitches = cached_find_similar_pitches(
                     pitch_engine,
                     st.session_state.search_player_id, st.session_state.search_season,
                     top_n=4,
                 )
+                spinner_placeholder.empty()
                 render_pitch_model(pitcher_info, pitches, similar_pitches)
         elif engine is not None:
             # Standard comparison rendering path (Hitter / Pitcher Profile)
@@ -556,6 +576,14 @@ def main():
             else:
                 # Pass "Pitcher" for Pitcher Profile so the view uses pitcher metrics
                 view_type = "Pitcher" if player_type == "Pitcher Profile" else player_type
+                spinner_placeholder = st.empty()
+                spinner_placeholder.markdown(
+                    '<div style="text-align:center; padding: 2rem 0;">'
+                    '<div style="font-size: 2.5rem; animation: spin 1s linear infinite; display: inline-block;">&#9918;</div>'
+                    '<style>@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }</style>'
+                    '</div>',
+                    unsafe_allow_html=True,
+                )
                 similar_players = cached_find_similar(
                     engine,
                     player_type,
@@ -563,6 +591,7 @@ def main():
                     st.session_state.search_season,
                     top_n=6,
                 )
+                spinner_placeholder.empty()
                 render_comparison(target_data, similar_players, player_type=view_type)
 
         st.markdown("</div>", unsafe_allow_html=True)
