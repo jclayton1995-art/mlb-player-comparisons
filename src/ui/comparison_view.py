@@ -302,7 +302,7 @@ def _build_mobile_comparison(
         <table class="m-table">
             <tbody>{results_rows}</tbody>
         </table>
-        <div class="m-follow">Follow <a href="https://x.com/FungoMedia" target="_blank">@FungoMedia</a> on X/Twitter!</div>
+        <div class="m-follow">Follow <a href="https://x.com/FungoMLB" target="_blank">@FungoMLB</a> on X/Twitter!</div>
     </div>
     """
 
@@ -661,11 +661,11 @@ def render_comparison(
     <body>
         <div class="desktop-layout">
             <div class="card-column">
-                <div class="follow-banner">Follow <a href="https://x.com/FungoMedia" target="_blank">@FungoMedia</a> on X/Twitter!</div>
+                <div class="follow-banner">Follow <a href="https://x.com/FungoMLB" target="_blank">@FungoMLB</a> on X/Twitter!</div>
                 {left}
             </div>
             <div class="card-column">
-                <div class="follow-banner">Follow <a href="https://x.com/FungoMedia" target="_blank">@FungoMedia</a> on X/Twitter!</div>
+                <div class="follow-banner">Follow <a href="https://x.com/FungoMLB" target="_blank">@FungoMLB</a> on X/Twitter!</div>
                 {right}
             </div>
         </div>

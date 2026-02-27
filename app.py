@@ -417,10 +417,10 @@ def main():
     </div>
     <div style="max-width: 720px; margin: 0 auto 1rem; text-align: center;">
         <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 0.75rem 1.25rem; font-size: 0.85rem; color: #664d03; margin-bottom: 0.5rem;">
-            This tool is currently in <strong>BETA</strong>. Expect the site to be slow while final adjustments are made. If you notice issues, bugs or have feedback &mdash; please reach out on X/Twitter <a href="https://x.com/FungoMedia" target="_blank" style="color: #664d03; font-weight: 600;">@FungoMedia</a>. Thanks!
+            This tool is currently in <strong>BETA</strong>. Expect the site to be slow while final adjustments are made. If you notice issues, bugs or have feedback &mdash; please reach out on X/Twitter <a href="https://x.com/FungoMLB" target="_blank" style="color: #664d03; font-weight: 600;">@FungoMLB</a>. Thanks!
         </div>
         <div style="font-size: 0.8rem; color: #666; font-weight: 500;">
-            Follow <a href="https://x.com/FungoMedia" target="_blank" style="color: #1e2a5a; text-decoration: none; font-weight: 600;">@FungoMedia</a> on X/Twitter for more MLB analysis &amp; insights
+            Follow <a href="https://x.com/FungoMLB" target="_blank" style="color: #1e2a5a; text-decoration: none; font-weight: 600;">@FungoMLB</a> on X/Twitter for more MLB analysis &amp; insights
         </div>
     </div>
     """, unsafe_allow_html=True)

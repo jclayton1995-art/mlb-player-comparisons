@@ -365,7 +365,7 @@ def _render_arsenal_overview(
         </style>
     </head>
     <body>
-        <div class="follow-banner">Follow <a href="https://x.com/FungoMedia" target="_blank">@FungoMedia</a> on X/Twitter!</div>
+        <div class="follow-banner">Follow <a href="https://x.com/FungoMLB" target="_blank">@FungoMLB</a> on X/Twitter!</div>
         <div class="arsenal-card">
             <div class="arsenal-header">
                 <div class="arsenal-photo">
