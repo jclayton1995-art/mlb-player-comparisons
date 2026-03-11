@@ -9,74 +9,40 @@ from fantasy_football.data import get_sample_prospects
 from fantasy_football.features import get_feature_descriptions, FEATURE_COLUMNS
 
 
-st.set_page_config(
-    page_title="WR Prospect Predictor",
-    page_icon="🏈",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
-
-# Styling
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
-
-    .stApp {
-        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-        background: #F5F4EF;
-    }
-
-    #MainMenu, footer, header, .stDeployButton {display: none !important;}
-    .block-container {padding: 1rem 4rem !important; max-width: 100% !important;}
-
-    .stButton > button {
-        background: #000 !important;
-        color: #fff !important;
-        border: none !important;
-        border-radius: 8px !important;
-        padding: 0.75rem 2rem !important;
-        font-weight: 600 !important;
-        font-size: 0.85rem !important;
-        letter-spacing: 0.02em !important;
-        transition: all 0.2s ease !important;
-    }
-
-    .stButton > button:hover {
-        background: #333 !important;
-        transform: translateY(-1px) !important;
-    }
-
-    .stRadio > div {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-        margin-bottom: 1rem;
-    }
-
-    .stRadio > div > label {
-        background: #fff;
-        border: 1px solid #D9D6CF;
-        border-radius: 8px;
-        padding: 0.5rem 1.5rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .stRadio > div > label:hover {
-        border-color: #000;
-    }
-
-    .stRadio > div > label:has(input:checked) {
-        background: #000;
-        color: #fff !important;
-        border-color: #000;
-    }
-
-    .stRadio > div > label:has(input:checked) * {
-        color: #fff !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+def _setup_standalone():
+    """Configure page when running as standalone app."""
+    st.set_page_config(
+        page_title="WR Prospect Predictor",
+        page_icon="🏈",
+        layout="wide",
+        initial_sidebar_state="collapsed",
+    )
+    st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
+        .stApp {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #F5F4EF;
+        }
+        #MainMenu, footer, header, .stDeployButton {display: none !important;}
+        .block-container {padding: 1rem 4rem !important; max-width: 100% !important;}
+        .stButton > button {
+            background: #000 !important; color: #fff !important; border: none !important;
+            border-radius: 8px !important; padding: 0.75rem 2rem !important;
+            font-weight: 600 !important; font-size: 0.85rem !important;
+        }
+        .stButton > button:hover { background: #333 !important; }
+        .stRadio > div { display: flex; gap: 1rem; justify-content: center; margin-bottom: 1rem; }
+        .stRadio > div > label {
+            background: #fff; border: 1px solid #D9D6CF; border-radius: 8px;
+            padding: 0.5rem 1.5rem; cursor: pointer;
+        }
+        .stRadio > div > label:has(input:checked) {
+            background: #000; color: #fff !important; border-color: #000;
+        }
+        .stRadio > div > label:has(input:checked) * { color: #fff !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
 
 TIER_COLORS = {
@@ -395,4 +361,5 @@ def main():
 
 
 if __name__ == "__main__":
+    _setup_standalone()
     main()
