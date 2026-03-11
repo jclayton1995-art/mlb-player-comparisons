@@ -15,8 +15,8 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import StandardScaler
 
-from src.football.data import build_historical_dataset
-from src.football.features import FEATURE_COLUMNS, engineer_features
+from fantasy_football.data import build_historical_dataset
+from fantasy_football.features import FEATURE_COLUMNS, engineer_features
 
 
 class WRProspectModel:

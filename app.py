@@ -12,7 +12,6 @@ from src.similarity.pitch_engine import PitchSimilarityEngine
 from src.metrics.definitions import PlayerType, get_metric_config
 from src.ui.comparison_view import render_comparison
 from src.ui.pitch_model_view import render_pitch_model
-from src.ui.football_view import render_football_predictions
 
 st.set_page_config(
     page_title="MLB Player Comparisons",
@@ -434,7 +433,7 @@ def main():
 
     player_type = st.radio(
         "Player Type",
-        options=["Hitter", "Pitcher Profile", "Pitch Model", "WR Prospects"],
+        options=["Hitter", "Pitcher Profile", "Pitch Model"],
         horizontal=True,
         label_visibility="collapsed",
         key="player_type_radio",
@@ -449,19 +448,6 @@ def main():
         st.rerun()
 
     st.session_state.player_type = player_type
-
-    # WR Prospects: render football prediction page and return early
-    if player_type == "WR Prospects":
-        st.markdown('<div class="results-section">', unsafe_allow_html=True)
-        render_football_predictions()
-        st.markdown("</div>", unsafe_allow_html=True)
-        # Footer
-        st.markdown("""
-        <div class="footer">
-            <p>Fantasy Football WR Prospect Model &mdash; College stats + Combine data</p>
-        </div>
-        """, unsafe_allow_html=True)
-        return
 
     # Load appropriate dataset and engine
     pitch_engine = None

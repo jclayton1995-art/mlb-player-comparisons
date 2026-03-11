@@ -1,12 +1,82 @@
-"""Streamlit UI for college WR fantasy football prediction model."""
+"""Fantasy Football WR Prospect Prediction - Standalone Streamlit App."""
 
 import streamlit as st
 import pandas as pd
 import numpy as np
 
-from src.football.model import WRProspectModel
-from src.football.data import get_sample_prospects
-from src.football.features import get_feature_descriptions, FEATURE_COLUMNS
+from fantasy_football.model import WRProspectModel
+from fantasy_football.data import get_sample_prospects
+from fantasy_football.features import get_feature_descriptions, FEATURE_COLUMNS
+
+
+st.set_page_config(
+    page_title="WR Prospect Predictor",
+    page_icon="🏈",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+
+# Styling
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
+
+    .stApp {
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #F5F4EF;
+    }
+
+    #MainMenu, footer, header, .stDeployButton {display: none !important;}
+    .block-container {padding: 1rem 4rem !important; max-width: 100% !important;}
+
+    .stButton > button {
+        background: #000 !important;
+        color: #fff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.75rem 2rem !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        letter-spacing: 0.02em !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .stButton > button:hover {
+        background: #333 !important;
+        transform: translateY(-1px) !important;
+    }
+
+    .stRadio > div {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-bottom: 1rem;
+    }
+
+    .stRadio > div > label {
+        background: #fff;
+        border: 1px solid #D9D6CF;
+        border-radius: 8px;
+        padding: 0.5rem 1.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .stRadio > div > label:hover {
+        border-color: #000;
+    }
+
+    .stRadio > div > label:has(input:checked) {
+        background: #000;
+        color: #fff !important;
+        border-color: #000;
+    }
+
+    .stRadio > div > label:has(input:checked) * {
+        color: #fff !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 
 TIER_COLORS = {
@@ -16,51 +86,6 @@ TIER_COLORS = {
     "Bench / Depth": "#aaaaaa",
     "Longshot": "#ff4136",
 }
-
-
-def render_football_predictions():
-    """Render the full fantasy football WR prediction page."""
-
-    # Train model (cached)
-    model = _get_trained_model()
-
-    # --- Input mode selector ---
-    input_mode = st.radio(
-        "Prospect Input",
-        options=["2025 Draft Class", "Custom Prospect"],
-        horizontal=True,
-        label_visibility="collapsed",
-    )
-
-    if input_mode == "2025 Draft Class":
-        prospects = get_sample_prospects()
-        predictions = _cached_predict(model, "2025_class")
-
-        st.markdown("""
-        <div style="text-align: center; margin-bottom: 1.5rem;">
-            <div style="font-size: 0.8rem; color: #999; text-transform: uppercase; letter-spacing: 0.15em;">
-                2025 Draft Class Predictions
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        _render_predictions_table(predictions)
-        _render_detailed_cards(predictions)
-
-    else:
-        _render_custom_prospect_form(model)
-
-    # --- Feature Importance ---
-    st.markdown("---")
-    st.markdown("""
-    <div style="text-align: center; margin: 1.5rem 0;">
-        <div style="font-family: 'DM Serif Display', serif; font-size: 1.25rem;">
-            What Drives the Model?
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    _render_feature_importance(model)
 
 
 @st.cache_resource
@@ -95,11 +120,9 @@ def _render_predictions_table(predictions: pd.DataFrame):
     display_df.index = display_df.index + 1
     display_df.index.name = "Rank"
 
-    # Format floats
     display_df["Yr 1 PPG"] = display_df["Yr 1 PPG"].map("{:.1f}".format)
     display_df["Best PPG"] = display_df["Best PPG"].map("{:.1f}".format)
 
-    # Build HTML table
     html = '<div style="max-width: 900px; margin: 0 auto; overflow-x: auto;">'
     html += '<table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">'
     html += '<thead><tr style="border-bottom: 2px solid #000;">'
@@ -289,7 +312,7 @@ def _render_feature_importance(model: WRProspectModel):
         feat = row["feature"]
         pct = row["importance_pct"]
         desc = descriptions.get(feat, feat)
-        bar_width = min(pct * 3, 100)  # Scale for visual
+        bar_width = min(pct * 3, 100)
 
         html += f"""
         <div style="margin-bottom: 0.5rem;">
@@ -304,3 +327,72 @@ def _render_feature_importance(model: WRProspectModel):
         """
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
+
+
+def main():
+    # Hero
+    st.markdown("""
+    <div style="padding: 1.5rem 0 1rem; text-align: center; max-width: 900px; margin: 0 auto;">
+        <h1 style="font-family: 'DM Serif Display', serif; font-size: 2.5rem; font-weight: 400;
+                   color: #000; line-height: 1.1; margin: 0 0 0.5rem 0; letter-spacing: -0.02em;">
+            WR Prospect Predictor
+        </h1>
+        <p style="font-size: 1rem; color: #666; line-height: 1.5; margin: 0 auto;">
+            Predict NFL fantasy football output for college wide receivers using
+            college production, athletic testing, and draft capital.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Train model
+    model = _get_trained_model()
+
+    # Input mode selector
+    input_mode = st.radio(
+        "Prospect Input",
+        options=["2025 Draft Class", "Custom Prospect"],
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+
+    if input_mode == "2025 Draft Class":
+        predictions = _cached_predict(model, "2025_class")
+
+        st.markdown("""
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <div style="font-size: 0.8rem; color: #999; text-transform: uppercase; letter-spacing: 0.15em;">
+                2025 Draft Class Predictions
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        _render_predictions_table(predictions)
+        _render_detailed_cards(predictions)
+    else:
+        _render_custom_prospect_form(model)
+
+    # Feature Importance
+    st.markdown("---")
+    st.markdown("""
+    <div style="text-align: center; margin: 1.5rem 0;">
+        <div style="font-family: 'DM Serif Display', serif; font-size: 1.25rem;">
+            What Drives the Model?
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    _render_feature_importance(model)
+
+    # Footer
+    st.markdown("""
+    <div style="padding: 1.5rem; text-align: center; border-top: 1px solid #E8E6E1;
+                background: #ECEAE5; margin-top: 2rem;">
+        <p style="font-size: 0.75rem; color: #999;">
+            Fantasy Football WR Prospect Model &mdash; College stats + Combine data
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+if __name__ == "__main__":
+    main()
