@@ -403,7 +403,7 @@ def main():
     <div class="nav">
         <div class="nav-brand">MLB Comps</div>
         <div class="nav-links">
-            <span>Statcast Era 2015–2025</span>
+            <span>Statcast Era 2015–2026</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -413,7 +413,7 @@ def main():
     <div class="hero">
         <div style="font-family: 'Pacifico', cursive; font-size: 3.2rem; color: #1e2a5a; margin-bottom: -0.75rem; letter-spacing: 0.01em;">Fungo's</div>
         <h1>MLB Comparison Machine</h1>
-        <p>Find statistically similar player seasons using Statcast data (2015-2025)</p>
+        <p>Find statistically similar player seasons using Statcast data (2015-2026)</p>
     </div>
     <div style="max-width: 720px; margin: 0 auto 1rem; text-align: center;">
         <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 0.75rem 1.25rem; font-size: 0.85rem; color: #664d03; margin-bottom: 0.5rem;">

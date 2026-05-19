@@ -78,12 +78,33 @@ class PitcherDataFetcher:
 
         try:
             data = pitching_stats(start_year, end_year, qual=min_ip)
-            if data is not None and not data.empty:
-                self.cache.set(cache_key, data)
-            return data if data is not None else pd.DataFrame()
         except Exception as e:
-            print(f"Error fetching FanGraphs pitching stats: {e}")
+            print(f"  FanGraphs pitching fetch failed ({e!s:.120}); falling back to Savant")
+            data = self._savant_pitching_fallback(start_year, end_year, min_ip)
+
+        if data is not None and not data.empty:
+            self.cache.set(cache_key, data)
+        return data if data is not None else pd.DataFrame()
+
+    def _savant_pitching_fallback(
+        self, start_year: int, end_year: int, min_ip: int
+    ) -> pd.DataFrame:
+        from .savant_leaderboard import get_pitcher_leaderboard
+        from .player_lookup import PlayerRegistry
+
+        registry = PlayerRegistry(self.cache)
+        frames = []
+        for year in range(start_year, end_year + 1):
+            try:
+                df = get_pitcher_leaderboard(year, min_ip=min_ip, registry=registry)
+            except Exception as e:
+                print(f"    Savant pitcher fallback failed for {year}: {e!s:.120}")
+                continue
+            if df is not None and not df.empty:
+                frames.append(df)
+        if not frames:
             return pd.DataFrame()
+        return pd.concat(frames, ignore_index=True)
 
     def get_all_statcast_for_year(self, year: int, min_bf: int = 100) -> pd.DataFrame:
         """Fetch and merge all Statcast pitcher data for a year."""

@@ -61,16 +61,41 @@ class DataFetcher:
     def get_fangraphs_batting(
         self, start_year: int, end_year: int, min_pa: int = 100
     ) -> pd.DataFrame:
-        """Fetch FanGraphs batting stats for a range of seasons."""
+        """Fetch FanGraphs batting stats; fall back to Savant on Cloudflare 403."""
         cache_key = f"fangraphs_batting_{start_year}_{end_year}"
         cached = self.cache.get(cache_key)
         if cached is not None:
             return cached
 
-        data = batting_stats(start_year, end_year, qual=min_pa)
+        try:
+            data = batting_stats(start_year, end_year, qual=min_pa)
+        except Exception as e:
+            print(f"  FanGraphs batting fetch failed ({e!s:.120}); falling back to Savant")
+            data = self._savant_batting_fallback(start_year, end_year, min_pa)
+
         if data is not None and not data.empty:
             self.cache.set(cache_key, data)
         return data if data is not None else pd.DataFrame()
+
+    def _savant_batting_fallback(
+        self, start_year: int, end_year: int, min_pa: int
+    ) -> pd.DataFrame:
+        from .savant_leaderboard import get_batter_leaderboard
+        from .player_lookup import PlayerRegistry
+
+        registry = PlayerRegistry(self.cache)
+        frames = []
+        for year in range(start_year, end_year + 1):
+            try:
+                df = get_batter_leaderboard(year, min_pa=min_pa, registry=registry)
+            except Exception as e:
+                print(f"    Savant batter fallback failed for {year}: {e!s:.120}")
+                continue
+            if df is not None and not df.empty:
+                frames.append(df)
+        if not frames:
+            return pd.DataFrame()
+        return pd.concat(frames, ignore_index=True)
 
     def get_statcast_batter_data(
         self, player_id: int, start_date: str, end_date: str
