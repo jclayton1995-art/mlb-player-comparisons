@@ -31,7 +31,7 @@ BATTER_SELECTIONS = [
     "batting_avg", "slg_percent", "on_base_percent", "on_base_plus_slg",
     "whiff_percent", "swing_percent", "oz_swing_percent",
     "iz_contact_percent", "oz_contact_percent",
-    "groundballs_percent", "flyballs_percent",
+    "groundballs_percent", "flyballs_percent", "popups_percent",
     "pull_percent", "straightaway_percent", "opposite_percent",
 ]
 BATTER_RENAME = {
@@ -139,7 +139,15 @@ def get_batter_leaderboard(
         # FanGraphs SwStr% = swings_missed / pitches. Savant whiff% is per-swing,
         # swing% is per-pitch → product gives the FanGraphs definition.
         df["SwStr%"] = df["swing_percent"] * df["whiff_percent"] / 100.0
-        df["Contact%"] = 100.0 - df["whiff_percent"]
+        # Contact% must be in FanGraphs' decimal form (0.80) so the merger's
+        # `whiff_pct = 1 - Contact%` produces a sane percentage.
+        df["Contact%"] = (100.0 - df["whiff_percent"]) / 100.0
+
+    # FanGraphs FB% includes popups; Savant splits them. Combine before rename.
+    if {"flyballs_percent", "popups_percent"}.issubset(df.columns):
+        df["flyballs_percent"] = (
+            df["flyballs_percent"].fillna(0) + df["popups_percent"].fillna(0)
+        )
 
     df = df.rename(columns=BATTER_RENAME)
     df["Season"] = year
