@@ -1,0 +1,963 @@
+{
+  "config": {
+    "features": null,
+    "targets": [
+      "xwoba",
+      "wrc_plus",
+      "k_pct",
+      "bb_pct",
+      "iso",
+      "babip"
+    ],
+    "min_coverage": 0.6,
+    "qual_pa": 100,
+    "train_min_pa": 200,
+    "ridge_alpha": 10.0,
+    "pred_weight": 1.0,
+    "profile_weight": 0.3,
+    "n_components": null,
+    "k_default": 40,
+    "kernel_scale": 2.0,
+    "age_mode": "predict",
+    "age_center": 27.0,
+    "age_scale": 5.0,
+    "shrink": true,
+    "shrink_scale": 2.0,
+    "min_season": null
+  },
+  "features": [
+    "exit_velocity",
+    "ev50",
+    "max_exit_velocity",
+    "hard_hit_pct",
+    "barrel_pct",
+    "brl_pa",
+    "launch_angle",
+    "anglesweetspotpercent",
+    "gb_pct",
+    "ld_pct",
+    "pull_pct",
+    "pull_air_pct",
+    "oppo_pct",
+    "chase_rate",
+    "zone_swing_pct",
+    "zone_contact_pct",
+    "whiff_pct",
+    "swstr_pct",
+    "k_pct",
+    "bb_pct"
+  ],
+  "feature_meta": {
+    "exit_velocity": {
+      "label": "Avg exit velo",
+      "cluster": "power",
+      "cluster_label": "Contact quality",
+      "higher_better": true,
+      "fmt": "{:.1f}",
+      "unit": "mph"
+    },
+    "ev50": {
+      "label": "EV50",
+      "cluster": "power",
+      "cluster_label": "Contact quality",
+      "higher_better": true,
+      "fmt": "{:.1f}",
+      "unit": "mph"
+    },
+    "max_exit_velocity": {
+      "label": "Max exit velo",
+      "cluster": "power",
+      "cluster_label": "Contact quality",
+      "higher_better": true,
+      "fmt": "{:.1f}",
+      "unit": "mph"
+    },
+    "hard_hit_pct": {
+      "label": "Hard-hit%",
+      "cluster": "power",
+      "cluster_label": "Contact quality",
+      "higher_better": true,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "barrel_pct": {
+      "label": "Barrel% (BBE)",
+      "cluster": "power",
+      "cluster_label": "Contact quality",
+      "higher_better": true,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "brl_pa": {
+      "label": "Barrel% (PA)",
+      "cluster": "power",
+      "cluster_label": "Contact quality",
+      "higher_better": true,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "launch_angle": {
+      "label": "Avg launch angle",
+      "cluster": "shape",
+      "cluster_label": "Batted-ball shape",
+      "higher_better": null,
+      "fmt": "{:.1f}",
+      "unit": "\u00b0"
+    },
+    "anglesweetspotpercent": {
+      "label": "Sweet-spot%",
+      "cluster": "shape",
+      "cluster_label": "Batted-ball shape",
+      "higher_better": true,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "gb_pct": {
+      "label": "Ground-ball%",
+      "cluster": "shape",
+      "cluster_label": "Batted-ball shape",
+      "higher_better": null,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "ld_pct": {
+      "label": "Line-drive%",
+      "cluster": "shape",
+      "cluster_label": "Batted-ball shape",
+      "higher_better": true,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "pull_pct": {
+      "label": "Pull%",
+      "cluster": "shape",
+      "cluster_label": "Batted-ball shape",
+      "higher_better": null,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "pull_air_pct": {
+      "label": "Pulled air%",
+      "cluster": "shape",
+      "cluster_label": "Batted-ball shape",
+      "higher_better": true,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "oppo_pct": {
+      "label": "Oppo%",
+      "cluster": "shape",
+      "cluster_label": "Batted-ball shape",
+      "higher_better": null,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "chase_rate": {
+      "label": "Chase%",
+      "cluster": "approach",
+      "cluster_label": "Approach & contact",
+      "higher_better": false,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "zone_swing_pct": {
+      "label": "Zone-swing%",
+      "cluster": "approach",
+      "cluster_label": "Approach & contact",
+      "higher_better": null,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "zone_contact_pct": {
+      "label": "Zone-contact%",
+      "cluster": "approach",
+      "cluster_label": "Approach & contact",
+      "higher_better": true,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "whiff_pct": {
+      "label": "Whiff%",
+      "cluster": "approach",
+      "cluster_label": "Approach & contact",
+      "higher_better": false,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "swstr_pct": {
+      "label": "SwStr%",
+      "cluster": "approach",
+      "cluster_label": "Approach & contact",
+      "higher_better": false,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "k_pct": {
+      "label": "K%",
+      "cluster": "approach",
+      "cluster_label": "Approach & contact",
+      "higher_better": false,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "bb_pct": {
+      "label": "BB%",
+      "cluster": "approach",
+      "cluster_label": "Approach & contact",
+      "higher_better": true,
+      "fmt": "{:.1f}",
+      "unit": "%"
+    },
+    "age": {
+      "label": "Age",
+      "cluster": "context",
+      "cluster_label": "Context",
+      "higher_better": null,
+      "fmt": "{:.0f}",
+      "unit": ""
+    }
+  },
+  "context_features": [
+    "age"
+  ],
+  "targets": [
+    "xwoba",
+    "wrc_plus",
+    "k_pct",
+    "bb_pct",
+    "iso",
+    "babip"
+  ],
+  "feature_importance": {
+    "exit_velocity": 0.02745116045781475,
+    "ev50": 0.06316559783020359,
+    "max_exit_velocity": 0.023347984191138853,
+    "hard_hit_pct": 0.028308363432430293,
+    "barrel_pct": 0.07535276232630271,
+    "brl_pa": 0.07958786947910605,
+    "launch_angle": 0.05619684656280618,
+    "anglesweetspotpercent": 0.020148781639179235,
+    "gb_pct": 0.050151602083198916,
+    "ld_pct": 0.051359870571470005,
+    "pull_pct": 0.018869182160951004,
+    "pull_air_pct": 0.05342832865111407,
+    "oppo_pct": 0.02292167586523525,
+    "chase_rate": 0.05110762662260464,
+    "zone_swing_pct": 0.018900890302434272,
+    "zone_contact_pct": 0.014744074652415654,
+    "whiff_pct": 0.07900397774430215,
+    "swstr_pct": 0.045971462823744064,
+    "k_pct": 0.09942333620853266,
+    "bb_pct": 0.08406417289843905,
+    "age": 0.0364944334965766
+  },
+  "cluster_importance": {
+    "power": 0.2972137377169963,
+    "shape": 0.2730762875339547,
+    "approach": 0.3932155412524725,
+    "context": 0.0364944334965766
+  },
+  "explained_variance_ratio": [
+    0.376805990007455,
+    0.17225433134472518,
+    0.14194726298868499,
+    0.09770850572400676,
+    0.06546768928163732,
+    0.03510927099132993,
+    0.02874346731572185,
+    0.018504146367083956,
+    0.014769127695431875,
+    0.010388845417734603,
+    0.009095879211196789,
+    0.008005413759707949,
+    0.005178459351135434,
+    0.004794727926680228,
+    0.004136915358298743,
+    0.0034353979351938986,
+    0.001522128519032883,
+    0.001332102476723144,
+    0.00044284365536199227,
+    0.00035749467285728365
+  ],
+  "train_pairs": 2633,
+  "seasons": [
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+  ],
+  "tau": 1.09093106870949,
+  "n_rows": 5668,
+  "trained_at": "2026-10-20T14:26:47.439419+00:00",
+  "outcomes": {
+    "xwoba": {
+      "label": "xwOBA",
+      "fmt": "{:.3f}",
+      "higher_better": true
+    },
+    "wrc_plus": {
+      "label": "wRC+",
+      "fmt": "{:.0f}",
+      "higher_better": true
+    },
+    "woba": {
+      "label": "wOBA",
+      "fmt": "{:.3f}",
+      "higher_better": true
+    },
+    "iso": {
+      "label": "ISO",
+      "fmt": "{:.3f}",
+      "higher_better": true
+    },
+    "babip": {
+      "label": "BABIP",
+      "fmt": "{:.3f}",
+      "higher_better": true
+    },
+    "avg": {
+      "label": "AVG",
+      "fmt": "{:.3f}",
+      "higher_better": true
+    },
+    "obp": {
+      "label": "OBP",
+      "fmt": "{:.3f}",
+      "higher_better": true
+    },
+    "slg": {
+      "label": "SLG",
+      "fmt": "{:.3f}",
+      "higher_better": true
+    },
+    "ops": {
+      "label": "OPS",
+      "fmt": "{:.3f}",
+      "higher_better": true
+    },
+    "hr": {
+      "label": "HR",
+      "fmt": "{:.0f}",
+      "higher_better": true
+    },
+    "sb": {
+      "label": "SB",
+      "fmt": "{:.0f}",
+      "higher_better": true
+    },
+    "war": {
+      "label": "WAR",
+      "fmt": "{:.1f}",
+      "higher_better": true
+    },
+    "xba": {
+      "label": "xBA",
+      "fmt": "{:.3f}",
+      "higher_better": true
+    },
+    "xslg": {
+      "label": "xSLG",
+      "fmt": "{:.3f}",
+      "higher_better": true
+    }
+  },
+  "tracking": {
+    "bat_speed": {
+      "label": "Bat speed",
+      "fmt": "{:.1f}",
+      "unit": "mph",
+      "higher_better": true
+    },
+    "fast_swing_pct": {
+      "label": "Fast-swing%",
+      "fmt": "{:.0f}",
+      "unit": "%",
+      "higher_better": true
+    },
+    "squared_up_pct": {
+      "label": "Squared-up%",
+      "fmt": "{:.0f}",
+      "unit": "%",
+      "higher_better": true
+    },
+    "blast_pct": {
+      "label": "Blast%",
+      "fmt": "{:.0f}",
+      "unit": "%",
+      "higher_better": true
+    },
+    "swing_length": {
+      "label": "Swing length",
+      "fmt": "{:.1f}",
+      "unit": "ft",
+      "higher_better": null
+    },
+    "attack_angle": {
+      "label": "Attack angle",
+      "fmt": "{:.0f}",
+      "unit": "\u00b0",
+      "higher_better": null
+    },
+    "ideal_attack_angle_pct": {
+      "label": "Ideal attack angle%",
+      "fmt": "{:.0f}",
+      "unit": "%",
+      "higher_better": true
+    },
+    "swords": {
+      "label": "Swords",
+      "fmt": "{:.0f}",
+      "unit": "",
+      "higher_better": null
+    }
+  },
+  "backtest": {
+    "test_seasons": [
+      2022,
+      2023,
+      2024,
+      2025
+    ],
+    "eval_min_pa": 200,
+    "summary": [
+      {
+        "outcome": "wrc_plus",
+        "method": "model_direct",
+        "rmse": 20.88531,
+        "mae": 16.52145,
+        "r": 0.55247,
+        "n": 1065
+      },
+      {
+        "outcome": "wrc_plus",
+        "method": "comps_direct_k40",
+        "rmse": 21.11473,
+        "mae": 16.71901,
+        "r": 0.54087,
+        "n": 1065
+      },
+      {
+        "outcome": "wrc_plus",
+        "method": "legacy_direct_k40",
+        "rmse": 21.86279,
+        "mae": 17.22426,
+        "r": 0.4945,
+        "n": 1065
+      },
+      {
+        "outcome": "wrc_plus",
+        "method": "marcel_k600",
+        "rmse": 21.92557,
+        "mae": 17.23322,
+        "r": 0.49239,
+        "n": 1065
+      },
+      {
+        "outcome": "wrc_plus",
+        "method": "marcel_k300",
+        "rmse": 22.15519,
+        "mae": 17.50093,
+        "r": 0.48799,
+        "n": 1065
+      },
+      {
+        "outcome": "wrc_plus",
+        "method": "naive",
+        "rmse": 25.70494,
+        "mae": 20.40879,
+        "r": 0.46982,
+        "n": 1065
+      },
+      {
+        "outcome": "xwoba",
+        "method": "model_direct",
+        "rmse": 0.02545,
+        "mae": 0.02002,
+        "r": 0.68493,
+        "n": 1065
+      },
+      {
+        "outcome": "xwoba",
+        "method": "comps_direct_k40",
+        "rmse": 0.02582,
+        "mae": 0.02038,
+        "r": 0.66521,
+        "n": 1065
+      },
+      {
+        "outcome": "xwoba",
+        "method": "marcel_k300",
+        "rmse": 0.02628,
+        "mae": 0.02076,
+        "r": 0.66662,
+        "n": 1065
+      },
+      {
+        "outcome": "xwoba",
+        "method": "marcel_k600",
+        "rmse": 0.02727,
+        "mae": 0.02139,
+        "r": 0.66674,
+        "n": 1065
+      },
+      {
+        "outcome": "xwoba",
+        "method": "legacy_direct_k40",
+        "rmse": 0.028,
+        "mae": 0.02179,
+        "r": 0.62093,
+        "n": 1065
+      },
+      {
+        "outcome": "xwoba",
+        "method": "naive",
+        "rmse": 0.0285,
+        "mae": 0.0226,
+        "r": 0.65913,
+        "n": 1065
+      }
+    ],
+    "by_season": [
+      {
+        "test_season": 2022,
+        "outcome": "wrc_plus",
+        "method": "naive",
+        "rmse": 24.54537,
+        "mae": 19.90805,
+        "r": 0.52875,
+        "n": 261
+      },
+      {
+        "test_season": 2022,
+        "outcome": "wrc_plus",
+        "method": "marcel_k300",
+        "rmse": 21.3479,
+        "mae": 16.68856,
+        "r": 0.54372,
+        "n": 261
+      },
+      {
+        "test_season": 2022,
+        "outcome": "wrc_plus",
+        "method": "marcel_k600",
+        "rmse": 21.33459,
+        "mae": 16.4912,
+        "r": 0.54686,
+        "n": 261
+      },
+      {
+        "test_season": 2022,
+        "outcome": "wrc_plus",
+        "method": "model_direct",
+        "rmse": 20.12903,
+        "mae": 16.11278,
+        "r": 0.61159,
+        "n": 261
+      },
+      {
+        "test_season": 2022,
+        "outcome": "wrc_plus",
+        "method": "comps_direct_k40",
+        "rmse": 20.45135,
+        "mae": 16.13028,
+        "r": 0.58891,
+        "n": 261
+      },
+      {
+        "test_season": 2022,
+        "outcome": "wrc_plus",
+        "method": "legacy_direct_k40",
+        "rmse": 21.16349,
+        "mae": 16.68935,
+        "r": 0.55099,
+        "n": 261
+      },
+      {
+        "test_season": 2022,
+        "outcome": "xwoba",
+        "method": "naive",
+        "rmse": 0.0273,
+        "mae": 0.02157,
+        "r": 0.69477,
+        "n": 261
+      },
+      {
+        "test_season": 2022,
+        "outcome": "xwoba",
+        "method": "marcel_k300",
+        "rmse": 0.02618,
+        "mae": 0.02027,
+        "r": 0.71167,
+        "n": 261
+      },
+      {
+        "test_season": 2022,
+        "outcome": "xwoba",
+        "method": "marcel_k600",
+        "rmse": 0.02791,
+        "mae": 0.02142,
+        "r": 0.71459,
+        "n": 261
+      },
+      {
+        "test_season": 2022,
+        "outcome": "xwoba",
+        "method": "model_direct",
+        "rmse": 0.02494,
+        "mae": 0.01966,
+        "r": 0.73071,
+        "n": 261
+      },
+      {
+        "test_season": 2022,
+        "outcome": "xwoba",
+        "method": "comps_direct_k40",
+        "rmse": 0.02569,
+        "mae": 0.01997,
+        "r": 0.71325,
+        "n": 261
+      },
+      {
+        "test_season": 2022,
+        "outcome": "xwoba",
+        "method": "legacy_direct_k40",
+        "rmse": 0.0277,
+        "mae": 0.0214,
+        "r": 0.65222,
+        "n": 261
+      },
+      {
+        "test_season": 2023,
+        "outcome": "wrc_plus",
+        "method": "naive",
+        "rmse": 26.70799,
+        "mae": 21.10791,
+        "r": 0.45664,
+        "n": 278
+      },
+      {
+        "test_season": 2023,
+        "outcome": "wrc_plus",
+        "method": "marcel_k300",
+        "rmse": 24.13714,
+        "mae": 18.95864,
+        "r": 0.47268,
+        "n": 278
+      },
+      {
+        "test_season": 2023,
+        "outcome": "wrc_plus",
+        "method": "marcel_k600",
+        "rmse": 24.12785,
+        "mae": 18.75015,
+        "r": 0.47699,
+        "n": 278
+      },
+      {
+        "test_season": 2023,
+        "outcome": "wrc_plus",
+        "method": "model_direct",
+        "rmse": 22.25756,
+        "mae": 17.31288,
+        "r": 0.57667,
+        "n": 278
+      },
+      {
+        "test_season": 2023,
+        "outcome": "wrc_plus",
+        "method": "comps_direct_k40",
+        "rmse": 22.72632,
+        "mae": 17.78495,
+        "r": 0.55644,
+        "n": 278
+      },
+      {
+        "test_season": 2023,
+        "outcome": "wrc_plus",
+        "method": "legacy_direct_k40",
+        "rmse": 23.45691,
+        "mae": 18.20267,
+        "r": 0.51382,
+        "n": 278
+      },
+      {
+        "test_season": 2023,
+        "outcome": "xwoba",
+        "method": "naive",
+        "rmse": 0.02974,
+        "mae": 0.02354,
+        "r": 0.66772,
+        "n": 278
+      },
+      {
+        "test_season": 2023,
+        "outcome": "xwoba",
+        "method": "marcel_k300",
+        "rmse": 0.02845,
+        "mae": 0.02244,
+        "r": 0.67096,
+        "n": 278
+      },
+      {
+        "test_season": 2023,
+        "outcome": "xwoba",
+        "method": "marcel_k600",
+        "rmse": 0.02951,
+        "mae": 0.02325,
+        "r": 0.67013,
+        "n": 278
+      },
+      {
+        "test_season": 2023,
+        "outcome": "xwoba",
+        "method": "model_direct",
+        "rmse": 0.02769,
+        "mae": 0.02146,
+        "r": 0.68123,
+        "n": 278
+      },
+      {
+        "test_season": 2023,
+        "outcome": "xwoba",
+        "method": "comps_direct_k40",
+        "rmse": 0.02799,
+        "mae": 0.02207,
+        "r": 0.63942,
+        "n": 278
+      },
+      {
+        "test_season": 2023,
+        "outcome": "xwoba",
+        "method": "legacy_direct_k40",
+        "rmse": 0.03046,
+        "mae": 0.02337,
+        "r": 0.60126,
+        "n": 278
+      },
+      {
+        "test_season": 2024,
+        "outcome": "wrc_plus",
+        "method": "naive",
+        "rmse": 25.50765,
+        "mae": 19.90967,
+        "r": 0.48041,
+        "n": 263
+      },
+      {
+        "test_season": 2024,
+        "outcome": "wrc_plus",
+        "method": "marcel_k300",
+        "rmse": 21.55156,
+        "mae": 17.1595,
+        "r": 0.50662,
+        "n": 263
+      },
+      {
+        "test_season": 2024,
+        "outcome": "wrc_plus",
+        "method": "marcel_k600",
+        "rmse": 21.31729,
+        "mae": 17.07593,
+        "r": 0.51341,
+        "n": 263
+      },
+      {
+        "test_season": 2024,
+        "outcome": "wrc_plus",
+        "method": "model_direct",
+        "rmse": 20.50249,
+        "mae": 16.25855,
+        "r": 0.55956,
+        "n": 263
+      },
+      {
+        "test_season": 2024,
+        "outcome": "wrc_plus",
+        "method": "comps_direct_k40",
+        "rmse": 21.05778,
+        "mae": 16.81306,
+        "r": 0.54078,
+        "n": 263
+      },
+      {
+        "test_season": 2024,
+        "outcome": "wrc_plus",
+        "method": "legacy_direct_k40",
+        "rmse": 22.01337,
+        "mae": 17.73159,
+        "r": 0.45651,
+        "n": 263
+      },
+      {
+        "test_season": 2024,
+        "outcome": "xwoba",
+        "method": "naive",
+        "rmse": 0.02861,
+        "mae": 0.02259,
+        "r": 0.64245,
+        "n": 263
+      },
+      {
+        "test_season": 2024,
+        "outcome": "xwoba",
+        "method": "marcel_k300",
+        "rmse": 0.02536,
+        "mae": 0.02011,
+        "r": 0.64762,
+        "n": 263
+      },
+      {
+        "test_season": 2024,
+        "outcome": "xwoba",
+        "method": "marcel_k600",
+        "rmse": 0.02604,
+        "mae": 0.02047,
+        "r": 0.64686,
+        "n": 263
+      },
+      {
+        "test_season": 2024,
+        "outcome": "xwoba",
+        "method": "model_direct",
+        "rmse": 0.02445,
+        "mae": 0.01904,
+        "r": 0.68019,
+        "n": 263
+      },
+      {
+        "test_season": 2024,
+        "outcome": "xwoba",
+        "method": "comps_direct_k40",
+        "rmse": 0.0249,
+        "mae": 0.01955,
+        "r": 0.66515,
+        "n": 263
+      },
+      {
+        "test_season": 2024,
+        "outcome": "xwoba",
+        "method": "legacy_direct_k40",
+        "rmse": 0.02668,
+        "mae": 0.02061,
+        "r": 0.60691,
+        "n": 263
+      },
+      {
+        "test_season": 2025,
+        "outcome": "wrc_plus",
+        "method": "naive",
+        "rmse": 26.05875,
+        "mae": 20.70954,
+        "r": 0.41348,
+        "n": 263
+      },
+      {
+        "test_season": 2025,
+        "outcome": "wrc_plus",
+        "method": "marcel_k300",
+        "rmse": 21.58414,
+        "mae": 17.19704,
+        "r": 0.42895,
+        "n": 263
+      },
+      {
+        "test_season": 2025,
+        "outcome": "wrc_plus",
+        "method": "marcel_k600",
+        "rmse": 20.92257,
+        "mae": 16.61558,
+        "r": 0.43231,
+        "n": 263
+      },
+      {
+        "test_season": 2025,
+        "outcome": "wrc_plus",
+        "method": "model_direct",
+        "rmse": 20.65217,
+        "mae": 16.40161,
+        "r": 0.46205,
+        "n": 263
+      },
+      {
+        "test_season": 2025,
+        "outcome": "wrc_plus",
+        "method": "comps_direct_k40",
+        "rmse": 20.22347,
+        "mae": 16.14776,
+        "r": 0.47736,
+        "n": 263
+      },
+      {
+        "test_season": 2025,
+        "outcome": "wrc_plus",
+        "method": "legacy_direct_k40",
+        "rmse": 20.81738,
+        "mae": 16.27344,
+        "r": 0.45666,
+        "n": 263
+      },
+      {
+        "test_season": 2025,
+        "outcome": "xwoba",
+        "method": "naive",
+        "rmse": 0.02835,
+        "mae": 0.02271,
+        "r": 0.63158,
+        "n": 263
+      },
+      {
+        "test_season": 2025,
+        "outcome": "xwoba",
+        "method": "marcel_k300",
+        "rmse": 0.02513,
+        "mae": 0.02022,
+        "r": 0.63621,
+        "n": 263
+      },
+      {
+        "test_season": 2025,
+        "outcome": "xwoba",
+        "method": "marcel_k600",
+        "rmse": 0.02561,
+        "mae": 0.0204,
+        "r": 0.63536,
+        "n": 263
+      },
+      {
+        "test_season": 2025,
+        "outcome": "xwoba",
+        "method": "model_direct",
+        "rmse": 0.02472,
+        "mae": 0.01993,
+        "r": 0.6476,
+        "n": 263
+      },
+      {
+        "test_season": 2025,
+        "outcome": "xwoba",
+        "method": "comps_direct_k40",
+        "rmse": 0.02468,
+        "mae": 0.01991,
+        "r": 0.64303,
+        "n": 263
+      },
+      {
+        "test_season": 2025,
+        "outcome": "xwoba",
+        "method": "legacy_direct_k40",
+        "rmse": 0.02717,
+        "mae": 0.02179,
+        "r": 0.62333,
+        "n": 263
+      }
+    ]
+  }
+}

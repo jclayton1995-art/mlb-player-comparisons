@@ -5,10 +5,10 @@ import pandas as pd
 from pybaseball import (
     statcast_pitcher_exitvelo_barrels,
     statcast_pitcher_expected_stats,
-    pitching_stats,
 )
 
 from .cache_manager import CacheManager
+from .fangraphs_api import batting_stats, pitching_stats  # FanGraphs JSON API (legacy scraper is blocked)
 
 
 class PitcherDataFetcher:

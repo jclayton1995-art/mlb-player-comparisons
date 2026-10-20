@@ -1,0 +1,13 @@
+# Render blueprint: https://render.com/docs/blueprint-spec
+# New → Blueprint → pick this repo, and Render creates the service from this file.
+services:
+  - type: web
+    name: mlb-comps
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-server.txt
+    startCommand: uvicorn server.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/meta
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9

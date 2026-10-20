@@ -1,27 +1,13 @@
-# Data cache
 data/cache/
 data/processed/
-
-# Python
+# data/model is committed on purpose (3 MB): the hosted app serves it directly.
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-.env
-.venv
+.venv/
 venv/
-ENV/
-
-# IDE
+.DS_Store
+frontend/node_modules/
 .idea/
 .vscode/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Streamlit
-.streamlit/secrets.toml
+_to_delete/
+frontend/dist/.vite/

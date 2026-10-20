@@ -248,8 +248,8 @@ def main():
     parser.add_argument(
         "--end-year",
         type=int,
-        default=2024,
-        help="Last year to include (default: 2024)",
+        default=2026,
+        help="Last year to include (default: 2026)",
     )
     parser.add_argument(
         "--min-pa",

@@ -1,0 +1,9 @@
+# What the hosted app needs (no data-refresh tooling). Pin major versions so Render's
+# build matches the scikit-learn the model was trained with.
+pandas>=2.0
+numpy>=1.24
+pyarrow>=14.0
+scikit-learn>=1.3
+joblib>=1.3
+fastapi>=0.110
+uvicorn>=0.27
