@@ -61,6 +61,8 @@ class ModelConfig:
     shrink: bool = True                         # sample-size shrinkage of z-scores (see prepare.SHRINK)
     shrink_scale: float = 2.0                   # multiplier on the stabilization constants (backtest-chosen)
     min_season: Optional[int] = None            # e.g. 2024 for a modern-era model
+    extra_context: List[str] = field(default_factory=list)  # standardized columns fed to the outcome regression only
+    track_beta: float = 0.46                    # wRC+ projection += beta * result_gap (0 disables); see project_from_comps
 
     def to_dict(self):
         return asdict(self)
@@ -100,16 +102,29 @@ class ComparisonModel:
             out = [f for f in out if f != "age"]
         elif has_age and "age" not in out:
             out.append("age")
+        for c in self.cfg.extra_context:
+            if c in df.columns and c not in out:
+                self.context_features.append(c)
         return out
 
     def context_matrix(self, df: pd.DataFrame) -> np.ndarray:
-        """Centered age and age^2 (aging curves are not linear); missing age -> peak age."""
-        if not self.context_features:
+        """Centered age and age^2 (aging curves are not linear); missing age -> peak age.
+        Extra context columns are standardized with global stats; missing -> 0."""
+        cols = []
+        if "age" in self.context_features:
+            a = pd.to_numeric(df["age"], errors="coerce").values.astype(float)
+            a = (a - self.cfg.age_center) / self.cfg.age_scale
+            a = np.nan_to_num(a, nan=0.0)
+            cols += [a, a ** 2]
+        for c in self.context_features:
+            if c == "age":
+                continue
+            g = self.global_stats.get(c) or {"mean": 0.0, "std": 1.0}
+            x = (pd.to_numeric(df[c], errors="coerce").values.astype(float) - g["mean"]) / g["std"]
+            cols.append(np.nan_to_num(x, nan=0.0))
+        if not cols:
             return np.zeros((len(df), 0))
-        a = pd.to_numeric(df["age"], errors="coerce").values.astype(float)
-        a = (a - self.cfg.age_center) / self.cfg.age_scale
-        a = np.nan_to_num(a, nan=0.0)
-        return np.column_stack([a, a ** 2])
+        return np.column_stack(cols)
 
     def _fit_standardizer(self, df: pd.DataFrame) -> None:
         self.season_stats = {}
@@ -124,8 +139,8 @@ class ComparisonModel:
                     stats[f] = {"mean": float(col.mean()), "std": float(col.std(ddof=0) or 1.0)}
             self.season_stats[int(season)] = stats
         self.global_stats = {}
-        for f in self.features:
-            col = qual[f].dropna()
+        for f in self.features + [c for c in self.context_features if c != "age"]:
+            col = pd.to_numeric(qual[f], errors="coerce").dropna()
             self.global_stats[f] = {"mean": float(col.mean()), "std": float(col.std(ddof=0) or 1.0)}
         # Targets are standardized against their own season too
         self.target_stats = {}
@@ -258,10 +273,14 @@ class ComparisonModel:
         imp = list(np.linalg.norm(L, axis=1))
         names = list(self.features)
         if self.context_features:
-            # age + age^2 coefficients, on the same (unit-variance-ish) scale as whitened components
+            # context coefficients, on the same (unit-variance-ish) scale as whitened components
             Bc = self.ridge.coef_.T[n_comp:]
-            imp.append(float(np.linalg.norm(Bc)))
-            names.append("age")
+            r = 0
+            if "age" in self.context_features:
+                imp.append(float(np.linalg.norm(Bc[:2]))); names.append("age"); r = 2
+            for c in self.context_features:
+                if c != "age":
+                    imp.append(float(np.linalg.norm(Bc[r]))); names.append(c); r += 1
         imp = np.array(imp) / np.sum(imp)
         self.feature_importance = {f: float(v) for f, v in zip(names, imp)}
         self.cluster_importance = {}
@@ -358,4 +377,13 @@ def project_from_comps(target: pd.Series, comps: pd.DataFrame, model: Comparison
         low = float(vals[order][np.searchsorted(cw, 0.2)])
         high = float(vals[order][min(np.searchsorted(cw, 0.8), len(order) - 1)])
         out[y] = {"value": est, "low": low, "high": high, "n": int(ok.sum())}
+        # Track-record adjustment (wRC+ only): about half of a hitter's career gap between his
+        # results and his contact quality persists (backtest beta = 0.46, fit 2019-21, validated
+        # 2022-25). Shift the whole band, and report the shift so the UI can show it.
+        if y == "wrc_plus" and model.cfg.track_beta and "result_gap" in target.index:
+            gap = pd.to_numeric(pd.Series([target.get("result_gap")]), errors="coerce").iloc[0]
+            if not pd.isna(gap):
+                adj = float(model.cfg.track_beta * gap)
+                out[y].update({"value": est + adj, "low": low + adj, "high": high + adj,
+                               "track_adj": adj, "track_gap": float(gap), "comps_only": est})
     return out

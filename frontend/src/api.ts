@@ -10,6 +10,7 @@ export type PlayerSeason = {
   pa: number | null;
   g: number | null;
   age: number | null;
+  result_gap: number | null;
   features: Record<string, Stat>;
   outcomes: Record<string, Stat>;
   tracking: Record<string, Stat> | null;
@@ -24,7 +25,14 @@ export type Comp = PlayerSeason & {
   z_diff: Record<string, number | null>;
 };
 
-export type ProjValue = { value: number | null; low: number | null; high: number | null; n: number };
+export type ProjValue = {
+  value: number | null; low: number | null; high: number | null; n: number;
+  /** wRC+ only: track-record adjustment applied (beta × career gap), and the unadjusted comps estimate */
+  track_adj?: number; track_gap?: number; comps_only?: number;
+};
+
+/** Below this best-comp similarity the projection is flagged as borrowed from weak matches (typical best ≈ 90). */
+export const LOW_CONFIDENCE = 85;
 
 export type CompareResponse = {
   target: PlayerSeason;
@@ -33,6 +41,8 @@ export type CompareResponse = {
     season: number;
     method: string;
     n_comps: number;
+    best_similarity: number | null;
+    track_beta: number;
     values: Record<string, ProjValue>;
     model_direct: Record<string, number | null>;
     actual: (Record<string, number | null> & { pa: number | null }) | null;

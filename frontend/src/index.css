@@ -388,3 +388,8 @@ a { color: inherit; }
 .card-foot { margin-top: auto; font-size: 10.5px; color: var(--mute); white-space: nowrap; overflow: hidden; }
 .card-foot b { font-weight: 800; font-stretch: 112%; color: var(--ink); }
 @media (max-width: 600px) { .share-stage { overflow-x: auto; justify-content: flex-start; } }
+.proj-note { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.45; }
+.proj-note .k { display: block; font-weight: 600; color: var(--ink-2); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+.proj-note b { color: var(--ink-2); font-weight: 600; }
+.proj-note.warn { color: #7a4f00; background: #fff7e6; border-radius: 6px; padding: 8px 10px; }
+.proj-note.warn .k { color: #7a4f00; }

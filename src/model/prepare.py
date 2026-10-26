@@ -48,6 +48,9 @@ FEATURES: Dict[str, dict] = {
     "bb_pct":         dict(label="BB%",            cluster="approach", higher_better=True,  fmt="{:.1f}", unit="%"),
     # Context
     "age":            dict(label="Age",            cluster="context", higher_better=None,  fmt="{:.0f}", unit=""),
+    # Track record: career-to-date wRC+ above/below what xwOBA implies (see add_result_gap).
+    # default=False until the backtest says otherwise.
+    "result_gap":     dict(label="Results vs. contact quality", cluster="track", higher_better=True, fmt="{:+.0f}", unit="", default=False),
     # Statcast bat tracking (2024+). default=False: not used by the main model (too few
     # seasons); available to the modern-era experiment via an explicit feature list.
     "bat_speed":              dict(label="Bat speed",       cluster="swing", higher_better=True,  fmt="{:.1f}", unit="mph", default=False),
@@ -83,6 +86,7 @@ CLUSTERS = {
     "approach": "Approach & contact",
     "swing":    "Swing (bat tracking)",
     "context":  "Context",
+    "track":    "Track record",
 }
 
 # Bat tracking (Statcast, 2024+). Shown on the card; not a similarity input until there
@@ -200,7 +204,35 @@ def load_batters(processed_dir: Path, min_pa: int = 50) -> pd.DataFrame:
     prev["season"] = prev["season"] + 1
     prev = prev.rename(columns={c: f"{c}_prev" for c in prev.columns if c not in ("mlbam_id", "season")})
     df = df.merge(prev, on=["mlbam_id", "season"], how="left")
+    df = add_result_gap(df)
     return df
+
+
+def add_result_gap(df: pd.DataFrame, k_pa: float = 1000.0, min_pa: int = 100) -> pd.DataFrame:
+    """Track record of results vs. contact quality.
+
+    Each season, fit wRC+ on xwOBA across qualified hitters; a hitter's residual is how far
+    his production ran above/below what his batted-ball quality implies (Kwan, Arraez: far
+    above; many sluggers who sell out: below). `result_gap` is his PA-weighted career
+    residual through the current season only (no look-ahead), shrunk toward 0 by
+    N / (N + k_pa) so one lucky half-season doesn't count as a trait.
+    """
+    out = df.copy()
+    out["_resid"] = np.nan
+    for season, grp in out.groupby("season"):
+        q = grp[(grp["pa"] >= min_pa) & grp["wrc_plus"].notna() & grp["xwoba"].notna()]
+        if len(q) < 30:
+            continue
+        b, a = np.polyfit(q["xwoba"].astype(float), q["wrc_plus"].astype(float), 1)
+        idx = grp.index[grp["wrc_plus"].notna() & grp["xwoba"].notna()]
+        out.loc[idx, "_resid"] = out.loc[idx, "wrc_plus"].astype(float) - (a + b * out.loc[idx, "xwoba"].astype(float))
+    out = out.sort_values(["mlbam_id", "season"])
+    w = out["pa"].astype(float).where(out["_resid"].notna(), 0.0)
+    num = (out["_resid"].fillna(0.0) * w).groupby(out["mlbam_id"]).cumsum()
+    den = w.groupby(out["mlbam_id"]).cumsum()
+    out["result_gap"] = (num / den.replace(0, np.nan)) * (den / (den + k_pa))
+    out["result_gap_pa"] = den
+    return out.drop(columns="_resid").sort_values(["mlbam_id", "season"]).reset_index(drop=True)
 
 
 def add_percentiles(df: pd.DataFrame, cols: List[str], min_pa: int = 100) -> pd.DataFrame:

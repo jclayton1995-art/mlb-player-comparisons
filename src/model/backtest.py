@@ -80,10 +80,14 @@ def run_backtest(
     include_legacy: bool = True,
     methods: List[str] = ("delta", "direct"),
     verbose: bool = True,
+    return_preds: bool = False,
 ) -> pd.DataFrame:
+    """Walk-forward backtest. With return_preds=True, returns one row per (player-season, outcome)
+    with every method's prediction and the actual, for slicing error by subgroup."""
     cfg = config or ModelConfig()
     df = df.reset_index(drop=True)
     rows = []
+    pred_rows = []
     for T in test_seasons:
         hist = df[df["season"] <= T].reset_index(drop=True)
         train_mask = (hist["season"] + 1) <= T          # pairs whose outcome was known at T
@@ -140,10 +144,20 @@ def run_backtest(
             for name, yp in results.items():
                 s = _score(y_true, yp)
                 rows.append({"test_season": T, "outcome": y, "method": name, **s})
+            if return_preds:
+                pr = pd.DataFrame({"mlbam_id": targets["mlbam_id"].values, "name": targets["name"].values,
+                                   "season": T, "outcome": y, "actual": y_true})
+                for name, yp in results.items():
+                    pr[name] = np.asarray(yp, dtype=float)
+                if "result_gap" in targets.columns:
+                    pr["result_gap"] = targets["result_gap"].values
+                pred_rows.append(pr)
         if verbose:
             sub = pd.DataFrame([r for r in rows if r["test_season"] == T])
             print(f"\n== Test season {T} -> {T + 1}  (n={len(targets)} hitters, train pairs={model.train_pairs})")
             print(sub.pivot(index="method", columns="outcome", values="rmse").round(4).to_string())
+    if return_preds:
+        return pd.concat(pred_rows, ignore_index=True)
     return pd.DataFrame(rows)
 
 

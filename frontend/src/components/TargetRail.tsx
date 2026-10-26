@@ -1,4 +1,4 @@
-import { fmt, type CompareResponse, type Meta } from '../api';
+import { fmt, LOW_CONFIDENCE, type CompareResponse, type Meta } from '../api';
 import { Avatar } from './Avatar';
 import { Profile } from './Profile';
 
@@ -34,6 +34,7 @@ export function TargetRail({ meta, data, seasons, onSeason }: Props) {
   const pr = data.projection;
   const wrc = pr.values.wrc_plus, xw = pr.values.xwoba;
   const hasActual = pr.actual && pr.actual.pa != null;
+  const lowConf = pr.best_similarity != null && pr.best_similarity < LOW_CONFIDENCE;
 
   const headline: { key: string; label: string; fmt: string }[] = [
     { key: 'xwoba', label: 'xwOBA', fmt: '{:.3f}' },
@@ -110,6 +111,21 @@ export function TargetRail({ meta, data, seasons, onSeason }: Props) {
           </div>
         ) : (
           <div className="proj-line"><span>{pr.season} not yet on record</span><span>projection stands</span></div>
+        )}
+        {lowConf && (
+          <div className="proj-note warn">
+            <span className="k">Few close comps</span>
+            <span>best match {fmt(pr.best_similarity, '{:.0f}')} vs. a typical 90 — nobody in the data hits quite like him, so take this with a wider band</span>
+          </div>
+        )}
+        {wrc?.track_adj != null && Math.abs(wrc.track_adj) >= 0.5 && (
+          <div className="proj-note">
+            <span className="k">Track record</span>
+            <span>
+              career results run <b>{wrc.track_gap! > 0 ? '+' : ''}{fmt(wrc.track_gap, '{:.0f}')} wRC+</b> {wrc.track_gap! > 0 ? 'above' : 'below'} what his contact quality implies;
+              about half of that persists, so comps said <b>{fmt(wrc.comps_only, '{:.0f}')}</b> → <b>{fmt(wrc.value, '{:.0f}')}</b>
+            </span>
+          </div>
         )}
         <div className="proj-line">
           <span>Regression model, no comps</span>

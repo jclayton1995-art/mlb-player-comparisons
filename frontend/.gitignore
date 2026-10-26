@@ -8,7 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
+# dist is committed on purpose: the hosted app serves the built frontend
 dist-ssr
 *.local
 

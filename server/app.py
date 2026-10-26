@@ -106,6 +106,8 @@ def build_explore(min_pa: int = 100) -> pd.DataFrame:
         w = np.exp(-0.5 * (dn / h) ** 2) * np.sqrt(np.minimum(pa[nn], pa_next[nn]) / 600.0)
         w[~np.isfinite(dn)] = 0
         proj[e] = (w * wrc_next[nn]).sum(axis=1) / np.where(w.sum(axis=1) > 0, w.sum(axis=1), np.nan)
+    if "result_gap" in df.columns and S.model.cfg.track_beta:
+        proj = proj + S.model.cfg.track_beta * np.nan_to_num(df["result_gap"].values.astype(float))
     out = pd.DataFrame({
         "row": np.arange(n), "mlbam_id": pid, "name": df["name"].values, "season": df["season"].values,
         "team": df["team"].values if "team" in df else None, "age": df["age"].values if "age" in df else np.nan, "pa": pa,
@@ -166,6 +168,7 @@ def _row_payload(i: int, with_next: bool = True) -> Dict[str, Any]:
         "pa": _num(r.get("pa")),
         "g": _num(r.get("g")),
         "age": _num(r.get("age")),
+        "result_gap": _num(r.get("result_gap")),
         "features": feats,
         "outcomes": outs,
     }
@@ -275,6 +278,11 @@ def compare(mlbam_id: int, season: int, k: int = 10, min_pa: int = 100, same_pla
             "season": season + 1,
             "method": "kernel-weighted mean of the next seasons of the 40 nearest comps",
             "n_comps": int(len(pool)),
+            # How close the closest comps are. A typical best match scores ~90; well below that
+            # means nobody in the data really hits like him and the projection is borrowed from
+            # weaker matches (the UI flags this).
+            "best_similarity": round(float(pool["similarity"].max()), 1) if len(pool) else None,
+            "track_beta": S.model.cfg.track_beta,
             "values": proj,
             "model_direct": target["model_next"],
             "actual": target["next"],

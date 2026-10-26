@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { toPng } from 'html-to-image';
-import { fmt, headshot as cdnHeadshot, shortName, type CompareResponse, type Meta } from '../api';
+import { fmt, headshot as cdnHeadshot, LOW_CONFIDENCE, shortName, type CompareResponse, type Meta } from '../api';
 
 const SHORT: Record<string, string> = {
   exit_velocity: 'Exit velo', ev50: 'EV50', max_exit_velocity: 'Max EV', hard_hit_pct: 'Hard-hit%', barrel_pct: 'Barrel%',
@@ -56,6 +56,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
   const wrc = pr.values.wrc_plus, xw = pr.values.xwoba;
   const comps = data.comps.slice(0, 3);
   const actual = pr.actual && pr.actual.pa != null ? pr.actual.wrc_plus : null;
+  const lowConf = pr.best_similarity != null && pr.best_similarity < LOW_CONFIDENCE;
   const keys = keyMetrics(meta);
   const file = `${t.name.replace(/[^A-Za-z0-9]+/g, '_')}_${t.season}_comps.png`;
 
@@ -125,7 +126,11 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
                 </div>
               </div>
               <div className="card-cap">
-                Band: the middle 60% of what his {pr.n_comps} closest comps did the next season · {fmt(wrc?.value, '{:.0f}')}: their weighted average
+                {lowConf
+                  ? <>Few close comps (best match {fmt(pr.best_similarity, '{:.0f}')}, typical 90) — nobody in the data hits quite like him; read the band wide</>
+                  : wrc?.track_adj != null && Math.abs(wrc.track_adj) >= 0.5
+                    ? <>Band: middle 60% of what his {pr.n_comps} closest comps did next · adjusted {wrc.track_adj > 0 ? '+' : ''}{fmt(wrc.track_adj, '{:.0f}')} for a career of {wrc.track_adj > 0 ? 'out-hitting' : 'under-hitting'} his contact quality</>
+                    : <>Band: the middle 60% of what his {pr.n_comps} closest comps did the next season · {fmt(wrc?.value, '{:.0f}')}: their weighted average</>}
               </div>
             </div>
 
