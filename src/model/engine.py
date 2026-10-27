@@ -63,6 +63,8 @@ class ModelConfig:
     min_season: Optional[int] = None            # e.g. 2024 for a modern-era model
     extra_context: List[str] = field(default_factory=list)  # standardized columns fed to the outcome regression only
     track_beta: float = 0.46                    # wRC+ projection += beta * result_gap (0 disables); see project_from_comps
+    history_weights: tuple = (0.6, 0.3)               # e.g. (0.6, 0.3): blend each skill with the player's prior two seasons (Marcel-style)
+    offset_weight: float = 1.0                  # neighborhood-offset correction strength (0 = off, 1 = full); see project_from_comps
 
     def to_dict(self):
         return asdict(self)
@@ -157,8 +159,23 @@ class ComparisonModel:
         Z = np.zeros((len(df), len(self.features)))
         seasons = df["season"].astype(int).values
         latest = max(self.season_stats) if self.season_stats else None
+        hw = self.cfg.history_weights
         for j, f in enumerate(self.features):
             x = pd.to_numeric(df[f], errors="coerce").values.astype(float)
+            col, k = SHRINK.get(f, ("pa", 0))
+            n = self._sample(df, col)
+            if hw and f != "age" and f"{f}_h1" in df.columns:
+                # Blend with the player's own previous seasons, weighted by sample x history weight
+                # (Marcel-style). A 285-PA star season is then mostly his last two years, not
+                # league average. The blended sample size feeds the shrinkage below.
+                num = np.nan_to_num(x) * np.nan_to_num(n); den = np.where(np.isnan(x), 0.0, np.nan_to_num(n))
+                for lag, wgt in zip((1, 2), hw):
+                    xh = pd.to_numeric(df.get(f"{f}_h{lag}"), errors="coerce").values.astype(float)
+                    nh = self._sample(df, f"{col}_h{lag}")
+                    good = ~np.isnan(xh) & ~np.isnan(nh)
+                    num = num + np.where(good, xh * nh * wgt, 0.0); den = den + np.where(good, nh * wgt, 0.0)
+                x = np.where(den > 0, num / np.where(den > 0, den, 1.0), np.nan)
+                n = den
             if f == "age":
                 g = self.global_stats[f]
                 z = (x - g["mean"]) / g["std"]
@@ -169,13 +186,18 @@ class ComparisonModel:
                     mean[i], std[i] = st["mean"], st["std"]
                 z = (x - mean) / std
             if self.cfg.shrink and f in SHRINK:
-                col, k = SHRINK[f]
-                k = k * self.cfg.shrink_scale
-                n = pd.to_numeric(df[col], errors="coerce").values.astype(float) if col in df.columns else np.full(len(df), np.nan)
-                n = np.where(np.isnan(n), pd.to_numeric(df["pa"], errors="coerce").values.astype(float) * (0.65 if col == "bbe" else 1.0), n)
-                z = z * (n / (n + k))
+                z = z * (n / (n + k * self.cfg.shrink_scale))
             Z[:, j] = np.nan_to_num(z, nan=0.0, posinf=0.0, neginf=0.0)
         return Z
+
+    @staticmethod
+    def _sample(df: pd.DataFrame, col: str) -> np.ndarray:
+        """Sample size for shrinkage: the named column (pa / bbe, possibly lagged), falling back to
+        PA (x0.65 for batted-ball events) when missing."""
+        base = col.replace("bbe", "pa") if col.startswith("bbe") else col
+        n = pd.to_numeric(df.get(col), errors="coerce").values.astype(float) if col in df.columns else np.full(len(df), np.nan)
+        fallback = pd.to_numeric(df.get(base), errors="coerce").values.astype(float) if base in df.columns else np.full(len(df), np.nan)
+        return np.where(np.isnan(n), fallback * (0.65 if col.startswith("bbe") else 1.0), n)
 
     def standardize_targets(self, df: pd.DataFrame, suffix: str = "_next", season_offset: int = 1) -> np.ndarray:
         Y = np.full((len(df), len(self.targets)), np.nan)
@@ -355,6 +377,16 @@ def project_from_comps(target: pd.Series, comps: pd.DataFrame, model: Comparison
     h = model.cfg.kernel_scale * model.tau
     w_dist = np.exp(-0.5 * (comps["distance"].values / h) ** 2)
     w_pa = np.sqrt(np.minimum(comps["pa"].values, comps["pa_next"].fillna(0).values) / 600.0)
+    # Neighborhood-offset correction (kNN edge bias): an outlier's comps all sit on one side of
+    # him, so their average is pulled toward the middle. Shift by what the (well-calibrated)
+    # regression predicts for him minus what it predicts for his comps, scaled by cfg.offset_weight.
+    offset: Dict[str, float] = {}
+    if method == "direct" and getattr(model.cfg, "offset_weight", 0) and len(comps) and hasattr(model, "predict_next"):
+        pt = model.predict_next(pd.DataFrame([target]))
+        pc = model.predict_next(comps)
+        for y in outcomes:
+            if y in pt.columns:
+                offset[y] = float(pt[y].iloc[0]), pc[y].values.astype(float)
     out = {}
     for y in outcomes:
         nxt = pd.to_numeric(comps.get(f"{y}_next"), errors="coerce").values.astype(float)
@@ -370,13 +402,18 @@ def project_from_comps(target: pd.Series, comps: pd.DataFrame, model: Comparison
             vals = tnow + (nxt[ok] - now[ok])
         else:
             vals = nxt[ok]
+        shift = 0.0
+        if y in offset:
+            p_t, p_c = offset[y]
+            shift = model.cfg.offset_weight * (p_t - float((w * p_c[ok]).sum()))
+            vals = vals + shift
         est = float((w * vals).sum())
         # Weighted 20th/80th percentile band from comp outcomes
         order = np.argsort(vals)
         cw = np.cumsum(w[order])
         low = float(vals[order][np.searchsorted(cw, 0.2)])
         high = float(vals[order][min(np.searchsorted(cw, 0.8), len(order) - 1)])
-        out[y] = {"value": est, "low": low, "high": high, "n": int(ok.sum())}
+        out[y] = {"value": est, "low": low, "high": high, "n": int(ok.sum()), "offset": shift}
         # Track-record adjustment (wRC+ only): about half of a hitter's career gap between his
         # results and his contact quality persists (backtest beta = 0.46, fit 2019-21, validated
         # 2022-25). Shift the whole band, and report the shift so the UI can show it.

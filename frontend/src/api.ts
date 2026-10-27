@@ -32,7 +32,7 @@ export type ProjValue = {
 };
 
 /** Below this best-comp similarity the projection is flagged as borrowed from weak matches (typical best ≈ 90). */
-export const LOW_CONFIDENCE = 85;
+export const LOW_CONFIDENCE = 82;
 
 export type CompareResponse = {
   target: PlayerSeason;

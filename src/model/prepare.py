@@ -204,8 +204,23 @@ def load_batters(processed_dir: Path, min_pa: int = 50) -> pd.DataFrame:
     prev["season"] = prev["season"] + 1
     prev = prev.rename(columns={c: f"{c}_prev" for c in prev.columns if c not in ("mlbam_id", "season")})
     df = df.merge(prev, on=["mlbam_id", "season"], how="left")
+    df = add_history(df)
     df = add_result_gap(df)
     return df
+
+
+def add_history(df: pd.DataFrame) -> pd.DataFrame:
+    """Attach each hitter's previous two seasons of every feature (plus pa/bbe) as <col>_h1, <col>_h2,
+    so the engine can blend a short season with the player's own recent history (see ModelConfig.history_weights)."""
+    cols = [c for c in list(FEATURES) + list(TRACKING) if c in df.columns and c != "age"] + ["pa", "bbe"]
+    cols = list(dict.fromkeys(c for c in cols if c in df.columns))
+    out = df
+    for lag, suf in ((1, "_h1"), (2, "_h2")):
+        h = df[["mlbam_id", "season"] + cols].copy()
+        h["season"] = h["season"] + lag
+        h = h.rename(columns={c: f"{c}{suf}" for c in cols})
+        out = out.merge(h, on=["mlbam_id", "season"], how="left")
+    return out
 
 
 def add_result_gap(df: pd.DataFrame, k_pa: float = 1000.0, min_pa: int = 100) -> pd.DataFrame:

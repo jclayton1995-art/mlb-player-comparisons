@@ -93,6 +93,9 @@ def build_explore(min_pa: int = 100) -> pd.DataFrame:
     wrc_next = df["wrc_plus_next"].values.astype(float)
     pa_next = df["pa_next"].fillna(0).values.astype(float)
     best_i = np.full(n, -1); best_d = np.full(n, np.nan); proj = np.full(n, np.nan)
+    # Regression prediction for everyone, for the neighborhood-offset correction (see engine.project_from_comps)
+    pred = df["wrc_plus_model_next"].values.astype(float) if "wrc_plus_model_next" in df.columns else S.model.predict_next(df)["wrc_plus"].values
+    ow = S.model.cfg.offset_weight
     sq = (E ** 2).sum(axis=1)
     for s in range(0, n, 256):
         e = slice(s, min(n, s + 256))
@@ -105,7 +108,10 @@ def build_explore(min_pa: int = 100) -> pd.DataFrame:
         dn = np.take_along_axis(Dp, nn, axis=1)
         w = np.exp(-0.5 * (dn / h) ** 2) * np.sqrt(np.minimum(pa[nn], pa_next[nn]) / 600.0)
         w[~np.isfinite(dn)] = 0
-        proj[e] = (w * wrc_next[nn]).sum(axis=1) / np.where(w.sum(axis=1) > 0, w.sum(axis=1), np.nan)
+        ws = np.where(w.sum(axis=1) > 0, w.sum(axis=1), np.nan)
+        proj[e] = (w * wrc_next[nn]).sum(axis=1) / ws
+        if ow:
+            proj[e] += ow * (pred[e] - (w * np.nan_to_num(pred[nn])).sum(axis=1) / ws)
     if "result_gap" in df.columns and S.model.cfg.track_beta:
         proj = proj + S.model.cfg.track_beta * np.nan_to_num(df["result_gap"].values.astype(float))
     out = pd.DataFrame({
