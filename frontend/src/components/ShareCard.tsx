@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { toPng } from 'html-to-image';
-import { fmt, headshot as cdnHeadshot, LOW_CONFIDENCE, type CompareResponse, type Meta } from '../api';
+import { fmt, headshot as cdnHeadshot, LOW_CONFIDENCE, shortName, type CompareResponse, type Meta } from '../api';
 
 /** Same-origin proxy first (exportable to PNG); MLB's CDN as a display fallback; initials last. */
 function Headshot({ id, name, size, cls }: { id: number; name: string; size: number; cls: string }) {
@@ -88,7 +88,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
           <div className="scard" ref={ref}>
             {/* 1 · who */}
             <div className="card-hero">
-              <Headshot id={t.mlbam_id} name={t.name} size={88} cls="card-avatar" />
+              <Headshot id={t.mlbam_id} name={t.name} size={76} cls="card-avatar" />
               <div className="card-hero-text">
                 <div className="card-name">{t.name}</div>
                 <div className="card-meta">{t.season}{t.team ? ` · ${t.team}` : ''} · {t.pa} PA{t.age != null ? ` · age ${t.age}` : ''}</div>
@@ -135,7 +135,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
             <div className="card-block comps3">
               <div className="card-h">
                 <span>Closest profiles</span>
-                <span className="s">below each: the skills the match is built on, his percentile / theirs</span>
+                <span className="s">numbers are percentile ranks, each in his own season</span>
               </div>
               <div className="cc key">
                 <span /><span />
@@ -148,10 +148,9 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
               {comps.map((c, i) => (
                 <div className="cc" key={c.row}>
                   <span className="cc-rk">{i + 1}</span>
-                  <Headshot id={c.mlbam_id} name={c.name} size={60} cls="card-comp-avatar" />
+                  <Headshot id={c.mlbam_id} name={c.name} size={46} cls="card-comp-avatar" />
                   <div className="cc-main">
-                    <div className="cc-nm">{c.name} <span className="cc-yr">{c.season}</span></div>
-                    <div className="cc-sub">{c.team ? `${c.team} · ` : ''}age {c.age ?? '–'} · {fmt(c.outcomes.wrc_plus?.value, '{:.0f}')} wRC+ that year</div>
+                    <div className="cc-nm">{c.name} <span className="cc-yr">{c.season}{c.team ? ` · ${c.team}` : ''} · age {c.age ?? '–'} · {fmt(c.outcomes.wrc_plus?.value, '{:.0f}')} wRC+</span></div>
                     <div className="meter" aria-label={`similarity ${c.similarity.toFixed(0)}`}>
                       <i className="meter-fill" style={{ width: `${meterPct(c.similarity)}%` }} />
                       <i className="meter-tick" style={{ left: `${meterPct(90)}%` }} />
@@ -163,11 +162,13 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
                       ? <><b>{fmt(c.next.wrc_plus, '{:.0f}')}</b><span>wRC+ in {c.season + 1}</span><Delta a={c.outcomes.wrc_plus?.value} b={c.next.wrc_plus} season={c.season} /></>
                       : <><b className="pending">–</b><span>{c.season + 1} not yet played</span></>}
                   </div>
-                    <div className="why">
-                      {sharedSkills(meta, t, c).map((k) => (
-                        <span className="chip" key={k.f}><span className="k">{k.label}</span><span className="p">{k.pa}</span><span className="sl">/</span><span className="p">{k.pb}</span></span>
-                      ))}
-                    </div>
+                    <table className="why">
+                    <thead><tr><th className="who">where they line up</th>{sharedSkills(meta, t, c).map((k) => <th key={k.f}>{k.label}</th>)}</tr></thead>
+                    <tbody>
+                      <tr className="a"><td className="who">{shortName(t.name)}</td>{sharedSkills(meta, t, c).map((k) => <td key={k.f}>{k.pa}</td>)}</tr>
+                      <tr className="b"><td className="who">{shortName(c.name)}</td>{sharedSkills(meta, t, c).map((k) => <td key={k.f}>{k.pb}</td>)}</tr>
+                    </tbody>
+                  </table>
                 </div>
               ))}
             </div>

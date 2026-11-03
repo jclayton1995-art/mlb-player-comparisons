@@ -494,3 +494,68 @@ h1, h2, h3 { margin: 0; }
 .cc.key { grid-template-rows: auto; }
 
 .cc { padding: 7px 0; }
+
+/* share card chips: self-labeled */
+.cc .why { display: grid; grid-template-columns: 92px repeat(3, 1fr); gap: 6px; align-items: stretch; margin-top: 7px; }
+.why-l { font-size: 10.5px; color: var(--mute); line-height: 1.25; align-self: center; }
+.why-l small { font-size: 9.5px; color: #9aa3ae; }
+.chip { display: flex; flex-direction: column; gap: 1px; padding: 4px 8px; border-radius: 5px; background: #f1f3f5; font-size: 11px; white-space: nowrap; min-width: 0; }
+.chip .k { color: #3b4652; font-weight: 600; font-size: 10.5px; }
+.chip .pair { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--mute); }
+.chip .pair b { font-weight: 800; font-stretch: 90%; font-size: 12.5px; color: var(--ink); margin-left: 2px; }
+.chip .pair .a b { color: var(--navy); }
+.scard { gap: 9px; padding: 18px 34px 10px; }
+.card-name { font-size: 30px; }
+.card-stats .v { font-size: 22px; }
+.card-range .marks.top { height: 30px; }
+.card-range .marks .mid b { font-size: 32px; }
+.cc { padding: 6px 0; }
+
+/* share card: "where they line up" as a tiny table per comp */
+.cc .why { grid-column: 3 / 5; display: table; margin-top: 6px; border-collapse: collapse; font-size: 11px; width: auto; }
+.why th { font-weight: 500; color: var(--mute); text-align: right; padding: 0 0 2px 16px; font-size: 10.5px; white-space: nowrap; }
+.why th.who { text-align: left; padding-left: 0; color: #9aa3ae; }
+.why td { text-align: right; padding: 0 0 0 16px; font-weight: 800; font-stretch: 90%; font-size: 12.5px; line-height: 1.3; }
+.why td.who { text-align: left; padding-left: 0; font-weight: 600; font-stretch: 100%; font-size: 11px; color: var(--mute); }
+.why tr.a td { color: var(--navy); }
+.why tr.a td.who { color: var(--navy); }
+.why tr.b td { color: var(--ink); }
+.cc { padding: 7px 0; }
+.scard { gap: 10px; padding: 20px 34px 10px; }
+
+/* share card: fit three comps with their tables */
+.scard { gap: 8px; padding: 16px 34px 8px; }
+.card-hero { grid-template-columns: 76px 1fr; gap: 16px; }
+.card-name { font-size: 28px; }
+.card-stats { margin-top: 4px; }
+.card-stats .v { font-size: 20px; }
+.card-range .marks.top { height: 26px; }
+.card-range .marks .mid b { font-size: 30px; }
+.card-range .marks.bottom { height: 16px; }
+.card-cap { margin-top: 0; }
+.cc { grid-template-columns: 12px 46px 1fr 110px; gap: 12px; padding: 6px 0; }
+.cc.key { padding: 0 0 2px; }
+.cc-nm { font-size: 15.5px; }
+.cc-yr { font-size: 11.5px; }
+.meter { margin-top: 6px; height: 10px; }
+.meter-tick { top: -3px; height: 16px; }
+.meter b { top: -5px; }
+.cc-next b { font-size: 22px; }
+.cc-next span { font-size: 10.5px; margin-top: 2px; }
+.cc-next .delta { font-size: 11px; }
+.cc .why { margin-top: 4px; }
+.why td { line-height: 1.25; font-size: 12px; }
+.why th { padding-bottom: 1px; }
+.card-foot { margin-top: auto; }
+
+.cc { padding: 4px 0; }
+.scard { gap: 7px; padding: 14px 34px 8px; }
+.card-range .marks.top { height: 24px; }
+.cc-main { padding-top: 2px; }
+
+.why td { line-height: 1.15; }
+.why th { font-size: 10px; }
+.meter-key { height: 14px; }
+.scard { padding-top: 12px; gap: 6px; }
+.card-hero { grid-template-columns: 68px 1fr; }
+.card-avatar { width: 68px !important; height: 68px !important; }
