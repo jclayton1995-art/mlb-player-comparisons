@@ -83,81 +83,81 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
         </div>
 
         <div className="share-stage">
-          <div className="scard v5" ref={ref}>
-            {/* 1 · who */}
-            <div className="v5-hero">
-              <Headshot id={t.mlbam_id} name={t.name} size={64} cls="card-avatar" />
-              <div>
-                <div className="card-name">{t.name}</div>
-                <div className="card-meta">{t.season}{t.team ? ` · ${t.team}` : ''} · {fmt(t.outcomes.wrc_plus?.value, '{:.0f}')} wRC+ · {fmt(t.outcomes.xwoba?.value, '{:.3f}')} xwOBA{t.age != null ? ` · age ${t.age}` : ''}</div>
-              </div>
-            </div>
-
-            {/* 2 · who he hits like: one comparison, in depth */}
-            {comps[0] && (() => { const c = comps[0]; const sk = sharedSkills(meta, t, c); return (
-              <div className="v5-match">
-                <div className="v5-kicker">Hits like</div>
-                <div className="v5-pair">
-                  <Headshot id={c.mlbam_id} name={c.name} size={76} cls="card-avatar" />
-                  <div className="v5-who">
-                    <div className="v5-nm">{c.name}</div>
-                    <div className="v5-sub">{c.season}{c.team ? ` · ${c.team}` : ''} · age {c.age ?? '–'}</div>
+          <div className="scard v6" ref={ref}>
+            {comps[0] && (() => { const c = comps[0]; const sk = sharedSkills(meta, t, c, 4); return (
+              <>
+                {/* headline block: the story in one sentence */}
+                <div className="v6-top">
+                  <div className="v6-kicker">Comps · {t.season}</div>
+                  <div className="v6-faces">
+                    <Headshot id={t.mlbam_id} name={t.name} size={88} cls="v6-face me" />
+                    <Headshot id={c.mlbam_id} name={c.name} size={88} cls="v6-face them" />
                   </div>
-                  <div className="v5-sim">
-                    <b>{c.similarity.toFixed(0)}</b>
-                    <span>similarity<br /><small>90 = a typical best match</small></span>
+                  <h1 className="v6-h1">{t.name} <span className="v6-hits">hits like</span> {c.season} {c.name}</h1>
+                  <div className="v6-deck">
+                    Similarity <b>{c.similarity.toFixed(0)}</b> of 100 · a typical best match scores 90
+                    {comps.length > 1 && <> · next closest: {comps.slice(1).map((d, i) => <span key={d.row}>{i > 0 ? ', ' : ''}{shortName(d.name)} ’{String(d.season).slice(2)} <b>{d.similarity.toFixed(0)}</b></span>)}</>}
                   </div>
                 </div>
-                <table className="why v5-why">
-                  <thead><tr><th className="who">percentile ranks</th>{sk.map((k) => <th key={k.f}>{k.label}</th>)}</tr></thead>
-                  <tbody>
-                    <tr className="a"><td className="who">{shortName(t.name)}</td>{sk.map((k) => <td key={k.f}>{k.pa}</td>)}</tr>
-                    <tr className="b"><td className="who">{shortName(c.name)}</td>{sk.map((k) => <td key={k.f}>{k.pb}</td>)}</tr>
-                  </tbody>
-                </table>
-                <div className="v5-next">
+
+                {/* evidence: the skills they share, as tracks */}
+                <div className="v6-ev">
+                  <div className="v6-ev-head">
+                    <span>Where their swings line up</span>
+                    <span className="v6-legend"><i className="me" /> {shortName(t.name)} ’{String(t.season).slice(2)} <i className="them" /> {shortName(c.name)} ’{String(c.season).slice(2)} · percentile that season</span>
+                  </div>
+                  {sk.map((k) => (
+                    <div className={'v6-trk' + (Math.abs(k.pa - k.pb) < 8 ? ' tight' : '')} key={k.f}>
+                      <span className="l">{k.label}</span>
+                      <div className="t">
+                        <i className="mid" />
+                        <i className="bar" style={{ left: `${Math.min(k.pa, k.pb)}%`, width: `${Math.abs(k.pa - k.pb)}%` }} />
+                        <span className="dot them" style={{ left: `${k.pb}%` }}>{k.pb}</span>
+                        <span className="dot me" style={{ left: `${k.pa}%` }}>{k.pa}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* consequence: what the comp did next */}
+                <div className="v6-next">
+                  <span className="v6-kicker">What {shortName(c.name)} did next</span>
                   {c.next
-                    ? <>{shortName(c.name)}’s next season: <b>{fmt(c.next.wrc_plus, '{:.0f}')} wRC+</b> <Delta a={c.outcomes.wrc_plus?.value} b={c.next.wrc_plus} season={c.season} /></>
-                    : <>{shortName(c.name)}’s next season hasn’t happened yet</>}
+                    ? <div className="v6-next-line"><b>{fmt(c.next.wrc_plus, '{:.0f}')}</b> wRC+ in {c.season + 1}<span className="from">from {fmt(c.outcomes.wrc_plus?.value, '{:.0f}')} in {c.season}</span><Delta a={c.outcomes.wrc_plus?.value} b={c.next.wrc_plus} season={c.season} /></div>
+                    : <div className="v6-next-line"><span className="from">{c.season + 1} hasn’t happened yet</span></div>}
                 </div>
-              </div>
+              </>
             ); })()}
-            {comps.length > 1 && (
-              <div className="v5-also">
-                Also close: {comps.slice(1).map((c, i) => <span key={c.row}>{i > 0 ? ' · ' : ''}{c.name} ’{String(c.season).slice(2)} <b>{c.similarity.toFixed(0)}</b></span>)}
-              </div>
-            )}
 
-            {/* 3 · what it means next year */}
-            <div className="v5-proj">
-              <div className="v5-proj-head">
-                <span className="v5-kicker">{pr.season} projection</span>
-                <span className="v5-proj-n"><b>{fmt(wrc?.value, '{:.0f}')}</b> wRC+</span>
+            {/* payoff: the projection, on paper */}
+            <div className="v6-proj">
+              <div className="v6-proj-l">
+                <span className="v6-kicker dark">{pr.season} projection</span>
+                <span className="v6-proj-n"><b>{fmt(wrc?.value, '{:.0f}')}</b> wRC+</span>
+                <span className="v6-proj-sub">{fmt(t.outcomes.wrc_plus?.value, '{:.0f}')} wRC+ in {t.season}</span>
               </div>
-              <div className="card-range v5-range">
-                <div className="axis">
-                  {wrc?.low != null && wrc?.high != null && (
-                    <span className="band" style={{ left: x(wrc.low), width: `calc(${x(wrc.high)} - ${x(wrc.low)})` }} />
-                  )}
-                  {wrc?.value != null && <span className="est" style={{ left: x(wrc.value) }} />}
-                  {actual != null && <span className="act" style={{ left: x(actual) }} />}
+              <div className="v6-proj-r">
+                <div className="card-range v6-range">
+                  <div className="axis">
+                    {wrc?.low != null && wrc?.high != null && <span className="band" style={{ left: x(wrc.low), width: `calc(${x(wrc.high)} - ${x(wrc.low)})` }} />}
+                    {wrc?.value != null && <span className="est" style={{ left: x(wrc.value) }} />}
+                    {actual != null && <span className="act" style={{ left: x(actual) }} />}
+                  </div>
+                  <div className="marks bottom">
+                    {wrc?.low != null && <span className="lo" style={{ left: x(wrc.low) }}>{fmt(wrc.low, '{:.0f}')}</span>}
+                    {wrc?.high != null && <span className="hi" style={{ left: x(wrc.high) }}>{fmt(wrc.high, '{:.0f}')}</span>}
+                    {actual != null && <span className="actual" style={{ left: x(actual) }}><b>{fmt(actual, '{:.0f}')}</b> actual</span>}
+                  </div>
                 </div>
-                <div className="marks bottom">
-                  {wrc?.low != null && <span className="lo" style={{ left: x(wrc.low) }}>{fmt(wrc.low, '{:.0f}')}</span>}
-                  {wrc?.high != null && <span className="hi" style={{ left: x(wrc.high) }}>{fmt(wrc.high, '{:.0f}')}</span>}
-                  {actual != null && <span className="actual" style={{ left: x(actual) }}><b>{fmt(actual, '{:.0f}')}</b> actual</span>}
+                <div className="v6-cap">
+                  {lowConf
+                    ? <>Few close comps — best match {fmt(pr.best_similarity, '{:.0f}')} vs. a typical 90 — so read the band wide</>
+                    : <>Likely range: the middle 60% of what his {pr.n_comps} closest comps did the next season</>}
                 </div>
-              </div>
-              <div className="card-cap">
-                {lowConf
-                  ? <>Few close comps: best match {fmt(pr.best_similarity, '{:.0f}')} vs. a typical 90, so read the band wide</>
-                  : <>From his {pr.n_comps} closest comps · band: the middle 60% of what they did next</>}
               </div>
             </div>
 
-            <div className="card-foot">
-              <b>Comps</b> · matched on skills, not on results · Statcast + FanGraphs {meta.seasons[0]}–{meta.seasons[meta.seasons.length - 1]}
-            </div>
+            <div className="v6-foot"><b>Comps</b> · matched on skills, not results · Statcast + FanGraphs {meta.seasons[0]}–{meta.seasons[meta.seasons.length - 1]}</div>
           </div>
         </div>
       </div>
