@@ -245,7 +245,7 @@ class ComparisonModel:
 
         # Calibrate similarity scale on the fitted population
         E = self._embed_from_whitened(W, C)
-        self.tau = self._calibrate_tau(E)
+        self.tau = self._calibrate_tau(E, df)
         self._compute_importance()
         return self
 
@@ -272,12 +272,23 @@ class ComparisonModel:
             out[t] = vals
         return out
 
-    def _calibrate_tau(self, E: np.ndarray) -> float:
-        """tau = median distance to the single nearest neighbour (excluding self)."""
+    def _calibrate_tau(self, E: np.ndarray, df: Optional[pd.DataFrame] = None) -> float:
+        """tau = median distance to the nearest *eligible* comp, so that similarity 90 really is
+        "a typical best match" as the app shows it: another player (a hitter's own other seasons are
+        his nearest rows, especially with history blending, but are never shown as comps), with a
+        qualifying sample on both sides (200+ PA)."""
         n = len(E)
-        idx = np.random.RandomState(0).choice(n, size=min(n, 1500), replace=False)
-        d = np.sqrt(((E[idx, None, :] - E[None, :, :]) ** 2).sum(-1))
-        d[np.arange(len(idx)), idx] = np.inf
+        rs = np.random.RandomState(0)
+        if df is not None:
+            pa = pd.to_numeric(df["pa"], errors="coerce").values
+            pid = df["mlbam_id"].values
+            elig = np.nan_to_num(pa) >= 200
+        else:
+            pid = np.arange(n); elig = np.ones(n, dtype=bool)
+        cand = np.flatnonzero(elig)
+        idx = rs.choice(cand, size=min(len(cand), 1500), replace=False)
+        d = np.sqrt(((E[idx, None, :] - E[None, cand, :]) ** 2).sum(-1))
+        d[pid[idx][:, None] == pid[cand][None, :]] = np.inf
         return float(np.median(d.min(axis=1)))
 
     def similarity(self, dist: np.ndarray) -> np.ndarray:
