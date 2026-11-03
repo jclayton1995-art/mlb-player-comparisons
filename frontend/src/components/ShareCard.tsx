@@ -36,8 +36,6 @@ function sharedSkills(meta: Meta, a: { features: Record<string, { pct: number | 
     .map(({ f }) => ({ f, label: SHORT[f] ?? meta.feature_meta[f].label, pa: clampP(a.features[f].pct!), pb: clampP(c.features[f].pct!) }));
 }
 
-/** Similarity meter on a fixed 70–100 scale so cards are comparable to each other; 90 = a typical best match. */
-const meterPct = (sim: number) => Math.min(100, Math.max(0, ((sim - 70) / 30) * 100));
 
 function Delta({ a, b, season }: { a: number | null | undefined; b: number | null | undefined; season: number }) {
   if (a == null || b == null) return null;
@@ -85,30 +83,58 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
         </div>
 
         <div className="share-stage">
-          <div className="scard" ref={ref}>
+          <div className="scard v5" ref={ref}>
             {/* 1 · who */}
-            <div className="card-hero">
-              <Headshot id={t.mlbam_id} name={t.name} size={76} cls="card-avatar" />
-              <div className="card-hero-text">
+            <div className="v5-hero">
+              <Headshot id={t.mlbam_id} name={t.name} size={64} cls="card-avatar" />
+              <div>
                 <div className="card-name">{t.name}</div>
-                <div className="card-meta">{t.season}{t.team ? ` · ${t.team}` : ''} · {t.pa} PA{t.age != null ? ` · age ${t.age}` : ''}</div>
-                <div className="card-stats">
-                  <div><span className="v">{fmt(t.outcomes.wrc_plus?.value, '{:.0f}')}</span><span className="l">wRC+</span></div>
-                  <div><span className="v">{fmt(t.outcomes.xwoba?.value, '{:.3f}')}</span><span className="l">xwOBA</span></div>
-                </div>
+                <div className="card-meta">{t.season}{t.team ? ` · ${t.team}` : ''} · {fmt(t.outcomes.wrc_plus?.value, '{:.0f}')} wRC+ · {fmt(t.outcomes.xwoba?.value, '{:.3f}')} xwOBA{t.age != null ? ` · age ${t.age}` : ''}</div>
               </div>
             </div>
 
-            {/* 2 · what's next */}
-            <div className="card-proj">
-              <div className="card-h">
-                <span>{pr.season} wRC+ projection</span>
-                <span className="s">from his {pr.n_comps} closest comps</span>
-              </div>
-              <div className="card-range">
-                <div className="marks top">
-                  {wrc?.value != null && <span className="mid" style={{ left: x(wrc.value) }}><b>{fmt(wrc.value, '{:.0f}')}</b> wRC+</span>}
+            {/* 2 · who he hits like: one comparison, in depth */}
+            {comps[0] && (() => { const c = comps[0]; const sk = sharedSkills(meta, t, c); return (
+              <div className="v5-match">
+                <div className="v5-kicker">Hits like</div>
+                <div className="v5-pair">
+                  <Headshot id={c.mlbam_id} name={c.name} size={76} cls="card-avatar" />
+                  <div className="v5-who">
+                    <div className="v5-nm">{c.name}</div>
+                    <div className="v5-sub">{c.season}{c.team ? ` · ${c.team}` : ''} · age {c.age ?? '–'}</div>
+                  </div>
+                  <div className="v5-sim">
+                    <b>{c.similarity.toFixed(0)}</b>
+                    <span>similarity<br /><small>90 = a typical best match</small></span>
+                  </div>
                 </div>
+                <table className="why v5-why">
+                  <thead><tr><th className="who">percentile ranks</th>{sk.map((k) => <th key={k.f}>{k.label}</th>)}</tr></thead>
+                  <tbody>
+                    <tr className="a"><td className="who">{shortName(t.name)}</td>{sk.map((k) => <td key={k.f}>{k.pa}</td>)}</tr>
+                    <tr className="b"><td className="who">{shortName(c.name)}</td>{sk.map((k) => <td key={k.f}>{k.pb}</td>)}</tr>
+                  </tbody>
+                </table>
+                <div className="v5-next">
+                  {c.next
+                    ? <>{shortName(c.name)}’s next season: <b>{fmt(c.next.wrc_plus, '{:.0f}')} wRC+</b> <Delta a={c.outcomes.wrc_plus?.value} b={c.next.wrc_plus} season={c.season} /></>
+                    : <>{shortName(c.name)}’s next season hasn’t happened yet</>}
+                </div>
+              </div>
+            ); })()}
+            {comps.length > 1 && (
+              <div className="v5-also">
+                Also close: {comps.slice(1).map((c, i) => <span key={c.row}>{i > 0 ? ' · ' : ''}{c.name} ’{String(c.season).slice(2)} <b>{c.similarity.toFixed(0)}</b></span>)}
+              </div>
+            )}
+
+            {/* 3 · what it means next year */}
+            <div className="v5-proj">
+              <div className="v5-proj-head">
+                <span className="v5-kicker">{pr.season} projection</span>
+                <span className="v5-proj-n"><b>{fmt(wrc?.value, '{:.0f}')}</b> wRC+</span>
+              </div>
+              <div className="card-range v5-range">
                 <div className="axis">
                   {wrc?.low != null && wrc?.high != null && (
                     <span className="band" style={{ left: x(wrc.low), width: `calc(${x(wrc.high)} - ${x(wrc.low)})` }} />
@@ -119,58 +145,14 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
                 <div className="marks bottom">
                   {wrc?.low != null && <span className="lo" style={{ left: x(wrc.low) }}>{fmt(wrc.low, '{:.0f}')}</span>}
                   {wrc?.high != null && <span className="hi" style={{ left: x(wrc.high) }}>{fmt(wrc.high, '{:.0f}')}</span>}
-                  {actual != null && <span className="actual" style={{ left: x(actual) }}><b>{fmt(actual, '{:.0f}')}</b> actual {pr.season}</span>}
+                  {actual != null && <span className="actual" style={{ left: x(actual) }}><b>{fmt(actual, '{:.0f}')}</b> actual</span>}
                 </div>
               </div>
               <div className="card-cap">
                 {lowConf
                   ? <>Few close comps: best match {fmt(pr.best_similarity, '{:.0f}')} vs. a typical 90, so read the band wide</>
-                  : <>Band: the middle 60% of what they did the next season</>}
+                  : <>From his {pr.n_comps} closest comps · band: the middle 60% of what they did next</>}
               </div>
-            </div>
-
-            {/* 3 · who he resembles, and how closely */}
-            <div className="card-block comps3">
-              <div className="card-h">
-                <span>Closest profiles</span>
-                <span className="s">under each: the skills they share, as percentile ranks</span>
-              </div>
-              <div className="cc key">
-                <span /><span />
-                <div className="meter-key">
-                  <span className="tick-lbl" style={{ left: `${meterPct(90)}%` }}>90 = a typical best match</span>
-                </div>
-                <span />
-              </div>
-              {comps.map((c, i) => (
-                <div className="cc" key={c.row}>
-                  <span className="cc-rk">{i + 1}</span>
-                  <Headshot id={c.mlbam_id} name={c.name} size={46} cls="card-comp-avatar" />
-                  <div className="cc-main">
-                    <div className="cc-nm">{c.name} <span className="cc-yr">{c.season}{c.team ? ` · ${c.team}` : ''} · age {c.age ?? '–'}</span></div>
-                    <div className="meter-row">
-                      <span className="meter-l">Similarity</span>
-                      <div className="meter" aria-label={`similarity ${c.similarity.toFixed(0)} of 100`}>
-                        <i className="meter-fill" style={{ width: `${meterPct(c.similarity)}%` }} />
-                        <i className="meter-tick" style={{ left: `${meterPct(90)}%` }} />
-                      </div>
-                      <b className="meter-n">{c.similarity.toFixed(0)}<small>/100</small></b>
-                    </div>
-                  </div>
-                  <div className="cc-next">
-                    {c.next
-                      ? <><b>{fmt(c.next.wrc_plus, '{:.0f}')}</b><span>wRC+ in {c.season + 1}</span><Delta a={c.outcomes.wrc_plus?.value} b={c.next.wrc_plus} season={c.season} /></>
-                      : <><b className="pending">–</b><span>{c.season + 1} not yet played</span></>}
-                  </div>
-                    <table className="why">
-                    <thead><tr><th className="who" />{sharedSkills(meta, t, c).map((k) => <th key={k.f}>{k.label}</th>)}</tr></thead>
-                    <tbody>
-                      <tr className="a"><td className="who">{shortName(t.name)}</td>{sharedSkills(meta, t, c).map((k) => <td key={k.f}>{k.pa}</td>)}</tr>
-                      <tr className="b"><td className="who">{shortName(c.name)}</td>{sharedSkills(meta, t, c).map((k) => <td key={k.f}>{k.pb}</td>)}</tr>
-                    </tbody>
-                  </table>
-                </div>
-              ))}
             </div>
 
             <div className="card-foot">
