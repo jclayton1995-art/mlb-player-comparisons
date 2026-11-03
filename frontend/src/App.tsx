@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, type CompareResponse, type Meta } from './api';
 import { Search } from './components/Search';
-import { TargetRail } from './components/TargetRail';
+import { PlayerHero } from './components/PlayerHero';
+import { ProjectionPanel } from './components/ProjectionPanel';
+import { Home } from './components/Home';
 import { CompList } from './components/CompList';
 import { ModelPanel } from './components/ModelPanel';
 import { ShareCard } from './components/ShareCard';
@@ -14,13 +16,6 @@ function readHash(): Sel {
   return m ? { id: +m[1], season: +m[2] } : null;
 }
 const isExplore = () => location.hash.startsWith('#/explore');
-
-const STARTERS: { name: string; id: number; season: number }[] = [
-  { name: 'Aaron Judge 2024', id: 592450, season: 2024 },
-  { name: 'Bobby Witt Jr. 2024', id: 677951, season: 2024 },
-  { name: 'Luis Arraez 2023', id: 650333, season: 2023 },
-  { name: 'Elly De La Cruz 2024', id: 682829, season: 2024 },
-];
 
 export default function App() {
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -65,17 +60,13 @@ export default function App() {
     <div className="shell">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-name">Comps</span>
-          <span className="brand-sub">hitter comparisons on underlying skills</span>
+          <a className="brand-name" href="#/">Comps</a>
+          <span className="brand-sub">hitter comps on underlying skills</span>
         </div>
         <Search onPick={pick} />
         <div className="topbar-right">
-          <button className={'btn' + (explore ? ' on' : '')} onClick={() => { location.hash = '#/explore'; }}>Explore</button>
-          {meta && (
-            <button className={'btn model-btn' + (showModel ? ' on' : '')} onClick={() => setShowModel(true)}>
-              How comps are chosen
-            </button>
-          )}
+          <a className={'nav' + (explore ? ' on' : '')} href="#/explore">Explore</a>
+          {meta && <button className={'nav' + (showModel ? ' on' : '')} onClick={() => setShowModel(true)}>How it works</button>}
         </div>
       </header>
 
@@ -83,34 +74,20 @@ export default function App() {
 
       {explore && meta && <main className="main-wide"><Explore meta={meta} onPick={pick} /></main>}
 
-      {!explore && !sel && meta && (
-        <div className="empty">
-          <h2>Pick a hitter to find his comps</h2>
-          <div>
-            {meta.n_rows.toLocaleString()} hitter-seasons, {meta.seasons[0]}–{meta.seasons[meta.seasons.length - 1]}. Search above, start with one of these, or <a href="#/explore">explore the whole league</a>.
-          </div>
-          <div className="quick">
-            {STARTERS.map((s) => (
-              <button key={s.id + s.season} className="btn" onClick={() => pick(s.id, s.season)}>{s.name}</button>
-            ))}
-          </div>
-        </div>
-      )}
+      {!explore && !sel && meta && <Home meta={meta} onPick={pick} />}
 
       {!explore && sel && meta && (
-        <main className="main" style={{ opacity: loading ? 0.6 : 1, transition: 'opacity .15s' }}>
-          {data ? (
-            <>
-              <TargetRail meta={meta} data={data} seasons={seasons} onSeason={(s) => pick(sel.id, s)} />
-              <CompList meta={meta} data={data} onPick={pick} onShare={() => setShowShare(true)} />
-            </>
-          ) : (
-            <>
-              <div className="skeleton" style={{ height: 520 }} />
-              <div className="skeleton" style={{ height: 520 }} />
-            </>
-          )}
-        </main>
+        data ? (
+          <>
+            <PlayerHero data={data} seasons={seasons} onSeason={(s) => pick(sel.id, s)} onShare={() => setShowShare(true)} />
+            <main className="main" style={{ opacity: loading ? 0.6 : 1, transition: 'opacity .15s' }}>
+              <ProjectionPanel meta={meta} data={data} />
+              <CompList meta={meta} data={data} onPick={pick} />
+            </main>
+          </>
+        ) : (
+          <main className="main"><div className="skeleton" style={{ height: 520 }} /><div className="skeleton" style={{ height: 520 }} /></main>
+        )
       )}
 
       {showModel && meta && <ModelPanel meta={meta} onClose={() => setShowModel(false)} />}

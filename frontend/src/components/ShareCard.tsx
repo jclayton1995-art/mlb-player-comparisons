@@ -88,7 +88,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
         </div>
 
         <div className="share-stage">
-          <div className="card" ref={ref}>
+          <div className="scard" ref={ref}>
             {/* 1 · who */}
             <div className="card-hero">
               <Headshot id={t.mlbam_id} name={t.name} size={88} cls="card-avatar" />

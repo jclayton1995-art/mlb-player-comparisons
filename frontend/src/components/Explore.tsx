@@ -78,8 +78,10 @@ export function Explore({ meta, onPick }: { meta: Meta; onPick: (id: number, sea
       { key: 'gap', label: 'Proj − now', hint: 'projection minus this season', num: true, render: (r) => { const g = gap(r); return g == null ? '–' : <span className={'d ' + (g >= 0 ? 'up' : 'dn')}>{g > 0 ? '+' : ''}{Math.round(g)}</span>; } },
       { key: 'next_wrc', label: 'Actual next', num: true, render: (r) => r.next_wrc != null ? fmt(r.next_wrc, '{:.0f}') : <span className="pending">–</span> },
     ];
+    const latest = meta.seasons[meta.seasons.length - 1];
+    if (season === latest) tail.pop();   // nothing has happened yet for the current season
     return [...base, ...metricCols, ...tail];
-  }, [condMetrics.join(','), metrics]);
+  }, [condMetrics.join(','), metrics, season]);
 
   const view = useMemo(() => {
     if (!rows) return [];
