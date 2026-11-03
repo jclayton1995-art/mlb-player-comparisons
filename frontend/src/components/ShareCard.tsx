@@ -22,6 +22,8 @@ const SHORT: Record<string, string> = {
   zone_contact_pct: 'Z-contact', whiff_pct: 'Whiff', swstr_pct: 'SwStr', k_pct: 'K%', bb_pct: 'BB%',
 };
 const clampP = (p: number) => Math.min(99, Math.max(1, Math.round(p)));
+/** One word for a similarity score, anchored to the league: the median best match is 90; 95+ is rare. */
+const matchWord = (sim: number) => (sim >= 95 ? 'near-twin' : sim >= 90 ? 'strong match' : sim >= 85 ? 'solid match' : 'loose match');
 
 /** The three skills a match is built on: heavily weighted by the model AND close between the two hitters. */
 function sharedSkills(meta: Meta, a: { features: Record<string, { pct: number | null }> }, c: { features: Record<string, { pct: number | null }>; z_diff: Record<string, number | null> }, n = 3) {
@@ -93,10 +95,20 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
                     <Headshot id={t.mlbam_id} name={t.name} size={88} cls="v6-face me" />
                     <Headshot id={c.mlbam_id} name={c.name} size={88} cls="v6-face them" />
                   </div>
-                  <h1 className="v6-h1">{t.name} <span className="v6-hits">hits like</span> {c.season} {c.name}</h1>
+                  <h1 className="v6-h1">{t.name} <span className="v6-hits">comps to</span> {c.season} {c.name}</h1>
                   <div className="v6-deck">
-                    Similarity <b>{c.similarity.toFixed(0)}</b> of 100 · a typical best match scores 90
-                    {comps.length > 1 && <> · next closest: {comps.slice(1).map((d, i) => <span key={d.row}>{i > 0 ? ', ' : ''}{shortName(d.name)} ’{String(d.season).slice(2)} <b>{d.similarity.toFixed(0)}</b></span>)}</>}
+                    <span className="v6-score">Similarity <b>{c.similarity.toFixed(0)}</b><small>/100</small> · {matchWord(c.similarity)}</span>
+                    {comps.length > 1 && (
+                      <span className="v6-runners">
+                        <span className="v6-runners-l">next closest</span>
+                        {comps.slice(1).map((d) => (
+                          <span className="v6-runner" key={d.row}>
+                            <Headshot id={d.mlbam_id} name={d.name} size={26} cls="v6-runner-face" />
+                            <span>{shortName(d.name)} ’{String(d.season).slice(2)}</span><b>{d.similarity.toFixed(0)}</b>
+                          </span>
+                        ))}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -151,7 +163,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
                 </div>
                 <div className="v6-cap">
                   {lowConf
-                    ? <>Few close comps — best match {fmt(pr.best_similarity, '{:.0f}')} vs. a typical 90 — so read the band wide</>
+                    ? <>His closest comps are loose matches, so read the band wide</>
                     : <>Likely range: the middle 60% of what his {pr.n_comps} closest comps did the next season</>}
                 </div>
               </div>
