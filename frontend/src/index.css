@@ -754,3 +754,7 @@ h1, h2, h3 { margin: 0; }
 .v6-trk .t { margin-right: 22px; }
 
 .v6-badge { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--gold); color: var(--bg); font-size: 11px; font-weight: 800; letter-spacing: .01em; vertical-align: 1px; }
+
+.v6-badge.gold { background: var(--gold); color: var(--bg); }
+.v6-badge.ink { background: var(--fg); color: var(--bg); }
+.v6-badge.mute { background: transparent; color: var(--fg-2); box-shadow: inset 0 0 0 1px rgba(244,244,242,.35); }

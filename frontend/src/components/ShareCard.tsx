@@ -22,9 +22,12 @@ const SHORT: Record<string, string> = {
   zone_contact_pct: 'Z-contact', whiff_pct: 'Whiff', swstr_pct: 'SwStr', k_pct: 'K%', bb_pct: 'BB%',
 };
 const clampP = (p: number) => Math.min(99, Math.max(1, Math.round(p)));
-/** Badge the strong cases only (median best match is 90; 95+ is rare). Below 90 the score speaks for itself
- *  and the tracks let the reader judge — a card shouldn't grade its own headline. */
-const matchWord = (sim: number) => (sim >= 95 ? 'near-twin' : sim >= 90 ? 'strong match' : null);
+/** Tag for the similarity score (median best match is 90; 95+ is rare). */
+const matchTag = (sim: number): { word: string; tone: 'gold' | 'ink' | 'mute' } =>
+  sim >= 95 ? { word: 'near-twin', tone: 'gold' }
+  : sim >= 90 ? { word: 'strong match', tone: 'gold' }
+  : sim >= 80 ? { word: 'solid match', tone: 'ink' }
+  : { word: 'loose match', tone: 'mute' };
 
 /** The three skills a match is built on: heavily weighted by the model AND close between the two hitters. */
 function sharedSkills(meta: Meta, a: { features: Record<string, { pct: number | null }> }, c: { features: Record<string, { pct: number | null }>; z_diff: Record<string, number | null> }, n = 3) {
@@ -98,7 +101,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
                   </div>
                   <h1 className="v6-h1">{t.name} <span className="v6-hits">comps to</span> {c.season} {c.name}</h1>
                   <div className="v6-deck">
-                    <span className="v6-score">Similarity <b>{c.similarity.toFixed(0)}</b><small>/100</small>{matchWord(c.similarity) && <span className="v6-badge">{matchWord(c.similarity)}</span>}</span>
+                    <span className="v6-score">Similarity <b>{c.similarity.toFixed(0)}</b><small>/100</small><span className={'v6-badge ' + matchTag(c.similarity).tone}>{matchTag(c.similarity).word}</span></span>
                     {comps.length > 1 && (
                       <span className="v6-runners">
                         <span className="v6-runners-l">next closest</span>
