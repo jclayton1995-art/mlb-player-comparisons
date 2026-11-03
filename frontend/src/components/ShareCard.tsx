@@ -23,11 +23,13 @@ const SHORT: Record<string, string> = {
 };
 const clampP = (p: number) => Math.min(99, Math.max(1, Math.round(p)));
 /** Tag for the similarity score (median best match is 90; 95+ is rare). */
-const matchTag = (sim: number): { word: string; tone: 'gold' | 'ink' | 'mute' } =>
-  sim >= 95 ? { word: 'near-twin', tone: 'gold' }
-  : sim >= 90 ? { word: 'strong match', tone: 'gold' }
-  : sim >= 80 ? { word: 'solid match', tone: 'ink' }
-  : { word: 'loose match', tone: 'mute' };
+const matchTag = (raw: number): { word: string; tone: 'gold' | 'ink' | 'mute' } => {
+  const sim = Math.round(raw);                       // tag the score as displayed, so a 89.6 shown as 90 reads "strong"
+  if (sim >= 95) return { word: 'near-twin', tone: 'gold' };
+  if (sim >= 90) return { word: 'strong match', tone: 'gold' };
+  if (sim >= 80) return { word: 'solid match', tone: 'ink' };
+  return { word: 'loose match', tone: 'mute' };
+};
 
 /** The three skills a match is built on: heavily weighted by the model AND close between the two hitters. */
 function sharedSkills(meta: Meta, a: { features: Record<string, { pct: number | null }> }, c: { features: Record<string, { pct: number | null }>; z_diff: Record<string, number | null> }, n = 3) {
@@ -56,7 +58,10 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
   const t = data.target;
   const pr = data.projection;
   const wrc = pr.values.wrc_plus;
-  const comps = data.comps.slice(0, 3);
+  // Which comp the card is about: defaults to the closest; any of the top five can be chosen.
+  const [pick, setPick] = useState(0);
+  const chosen = data.comps[pick] ?? data.comps[0];
+  const comps = chosen ? [chosen, ...data.comps.filter((c) => c.row !== chosen.row).slice(0, 2)] : [];
   const actual = pr.actual && pr.actual.pa != null ? pr.actual.wrc_plus : null;
   const lowConf = pr.best_similarity != null && pr.best_similarity < LOW_CONFIDENCE;
   const file = `${t.name.replace(/[^A-Za-z0-9]+/g, '_')}_${t.season}_comps.png`;
@@ -88,6 +93,14 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
           <button className="btn primary" onClick={download} disabled={busy}>{busy ? 'Rendering…' : 'Download PNG'}</button>
         </div>
 
+        <div className="share-pick">
+          <span className="share-pick-l">Comp to</span>
+          {data.comps.slice(0, 5).map((c, i) => (
+            <button key={c.row} className={'share-pick-btn' + (i === pick ? ' on' : '')} onClick={() => setPick(i)}>
+              {shortName(c.name)} ’{String(c.season).slice(2)} <b>{c.similarity.toFixed(0)}</b>
+            </button>
+          ))}
+        </div>
         <div className="share-stage">
           <div className="scard v6" ref={ref}>
             {comps[0] && (() => { const c = comps[0]; const sk = sharedSkills(meta, t, c, 4); return (
