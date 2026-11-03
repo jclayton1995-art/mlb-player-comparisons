@@ -125,9 +125,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
               <div className="card-cap">
                 {lowConf
                   ? <>Few close comps: best match {fmt(pr.best_similarity, '{:.0f}')} vs. a typical 90, so read the band wide</>
-                  : wrc?.track_adj != null && Math.abs(wrc.track_adj) >= 0.5
-                    ? <>Band: middle 60% of his {pr.n_comps} comps’ next seasons · {wrc.track_adj > 0 ? '+' : ''}{fmt(wrc.track_adj, '{:.0f}')} for his track record vs. contact quality</>
-                    : <>Band: middle 60% of his {pr.n_comps} comps’ next seasons · {fmt(wrc?.value, '{:.0f}')}: their weighted average</>}
+                  : <>Band: the middle 60% of what his {pr.n_comps} closest comps did the next season · {fmt(wrc?.value, '{:.0f}')}: their weighted average</>}
               </div>
             </div>
 
