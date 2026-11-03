@@ -436,3 +436,33 @@ h1, h2, h3 { margin: 0; }
 .ct-c { position: absolute; top: 6px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 1.5px var(--ink); }
 .ct-dot { position: absolute; top: 0; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; font-stretch: 85%; box-shadow: 0 0 0 2px #fff; z-index: 2; }
 .ct-v { text-align: right; font-weight: 700; font-stretch: 90%; }
+
+/* share card v4: three beats — who, the number, the comps with a closeness meter */
+.scard { gap: 14px; padding: 26px 34px 14px; }
+.card-name { font-size: 34px; }
+.card-stats .v { font-size: 26px; }
+.card-range .marks .mid b { font-size: 36px; }
+.card-range .marks.top { height: 36px; }
+.card-range .axis::before { height: 3px; top: 6px; }
+.card-range .band { top: 1px; height: 13px; }
+.card-cap { font-size: 11px; }
+.comps3 { margin-top: 2px; }
+.cc { display: grid; grid-template-columns: 14px 60px 1fr 118px; gap: 14px; align-items: center; padding: 12px 0; border-top: 1px solid var(--rule); }
+.cc.key { padding: 0 0 4px; border-top: 0; }
+.meter-key { position: relative; height: 16px; margin-right: 34px; font-size: 10.5px; color: var(--mute); }
+.meter-key .tick-lbl { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; color: var(--ink); }
+.meter-key .tick-lbl::after { content: ''; position: absolute; left: 50%; top: 14px; width: 2px; height: 6px; margin-left: -1px; background: var(--ink); }
+.cc-rk { color: #9aa3ae; font-size: 12px; }
+.card-comp-avatar { font-size: 18px; }
+.cc-nm { font-weight: 800; font-size: 18px; letter-spacing: -0.015em; line-height: 1.1; white-space: nowrap; }
+.cc-yr { font-weight: 500; color: var(--mute); font-size: 13px; margin-left: 2px; }
+.cc-sub { color: var(--mute); font-size: 11.5px; margin-top: 2px; white-space: nowrap; }
+.meter { position: relative; height: 12px; margin-top: 9px; margin-right: 34px; background: var(--rule); border-radius: 5px; }
+.meter-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--navy); border-radius: 5px; }
+.meter-tick { position: absolute; top: -4px; width: 2px; height: 18px; margin-left: -1px; background: var(--ink); }
+.meter b { position: absolute; top: -4px; right: -34px; width: 30px; text-align: right; font-size: 14px; font-weight: 800; font-stretch: 90%; color: var(--navy); line-height: 20px; }
+.cc-next { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.cc-next b { font-size: 26px; font-weight: 800; font-stretch: 92%; letter-spacing: -0.02em; line-height: 1; }
+.cc-next span { font-size: 11px; color: var(--mute); margin-top: 3px; }
+.cc-next .delta { font-size: 11.5px; font-weight: 600; margin: 1px 0 0; }
+.cc-next .delta.up { color: #15803d; } .cc-next .delta.dn { color: #b4432d; }

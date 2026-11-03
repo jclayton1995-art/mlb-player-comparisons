@@ -2,21 +2,6 @@ import { useRef, useState } from 'react';
 import { toPng } from 'html-to-image';
 import { fmt, headshot as cdnHeadshot, LOW_CONFIDENCE, type CompareResponse, type Meta } from '../api';
 
-const SHORT: Record<string, string> = {
-  exit_velocity: 'Exit velo', ev50: 'EV50', max_exit_velocity: 'Max EV', hard_hit_pct: 'Hard-hit%', barrel_pct: 'Barrel%',
-  brl_pa: 'Barrels / PA', launch_angle: 'Launch angle', anglesweetspotpercent: 'Sweet-spot%', gb_pct: 'Ground-ball%', ld_pct: 'Line-drive%',
-  pull_pct: 'Pull%', oppo_pct: 'Oppo%', pull_air_pct: 'Pulled air%', chase_rate: 'Chase%', zone_swing_pct: 'Zone swing%',
-  zone_contact_pct: 'Z-Contact%', o_contact_pct: 'Chase contact%', bat_speed: 'Bat speed', whiff_pct: 'Whiff%', swstr_pct: 'SwStr%', k_pct: 'K%', bb_pct: 'BB%',
-};
-
-/** Jack's pick: five process skills, contact → approach → swing → power → shape. K% and BB% stay model inputs
- *  (dropping them costs ~0.4 wRC+ RMSE) but read as results, so they're not shown. Bat speed is display-only (2024+). */
-const CARD_METRICS = ['zone_contact_pct', 'chase_rate', 'bat_speed', 'ev50', 'pull_air_pct'];
-
-function keyMetrics(meta: Meta): string[] {
-  return CARD_METRICS.filter((f) => meta.features.includes(f) || meta.tracking[f]);
-}
-
 /** Same-origin proxy first (exportable to PNG); MLB's CDN as a display fallback; initials last. */
 function Headshot({ id, name, size, cls }: { id: number; name: string; size: number; cls: string }) {
   const [stage, setStage] = useState(0);
@@ -30,20 +15,8 @@ function Headshot({ id, name, size, cls }: { id: number; name: string; size: num
   );
 }
 
-/** Savant-style cell fill. The server's percentile is already oriented so higher = better
- *  (lower-is-better metrics are flipped there). 0 = deep blue, 50 = white, 100 = bright red. */
-function cellStyle(pct: number | null | undefined, higherBetter: boolean | null): React.CSSProperties | undefined {
-  if (pct == null) return undefined;
-  if (higherBetter == null) return { background: '#9ba1a9', color: '#fff' };
-  const p = pct;
-  const t = Math.min(1, Math.abs(p - 50) / 50);             // 0 at the median, 1 at the extremes
-  const [r, g, b] = p < 50 ? [31, 86, 168] : [214, 38, 44];   // blue · red
-  const k = 0.3 + 0.7 * t;                                   // never fully white at the median
-  const mix = (c: number) => Math.round(255 + (c - 255) * k);
-  return { background: `rgb(${mix(r)},${mix(g)},${mix(b)})`, color: k > 0.55 ? '#fff' : '#121417' };
-}
-
-const clampP = (p: number) => Math.min(99, Math.max(1, Math.round(p)));
+/** Similarity meter on a fixed 70–100 scale so cards are comparable to each other; 90 = a typical best match. */
+const meterPct = (sim: number) => Math.min(100, Math.max(0, ((sim - 70) / 30) * 100));
 
 function Delta({ a, b, season }: { a: number | null | undefined; b: number | null | undefined; season: number }) {
   if (a == null || b == null) return null;
@@ -61,7 +34,6 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
   const comps = data.comps.slice(0, 3);
   const actual = pr.actual && pr.actual.pa != null ? pr.actual.wrc_plus : null;
   const lowConf = pr.best_similarity != null && pr.best_similarity < LOW_CONFIDENCE;
-  const keys = keyMetrics(meta);
   const file = `${t.name.replace(/[^A-Za-z0-9]+/g, '_')}_${t.season}_comps.png`;
 
   // Range bar geometry: pad the axis a little beyond low/high (and the actual, if shown)
@@ -131,65 +103,47 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
               </div>
               <div className="card-cap">
                 {lowConf
-                  ? <>Few close comps (best match {fmt(pr.best_similarity, '{:.0f}')}, typical 90) — nobody in the data hits quite like him; read the band wide</>
+                  ? <>Few close comps: best match {fmt(pr.best_similarity, '{:.0f}')} vs. a typical 90, so read the band wide</>
                   : wrc?.track_adj != null && Math.abs(wrc.track_adj) >= 0.5
-                    ? <>Band: middle 60% of what his {pr.n_comps} closest comps did next · adjusted {wrc.track_adj > 0 ? '+' : ''}{fmt(wrc.track_adj, '{:.0f}')} for a career of {wrc.track_adj > 0 ? 'out-hitting' : 'under-hitting'} his contact quality</>
-                    : <>Band: the middle 60% of what his {pr.n_comps} closest comps did the next season · {fmt(wrc?.value, '{:.0f}')}: their weighted average</>}
+                    ? <>Band: middle 60% of his {pr.n_comps} comps’ next seasons · {wrc.track_adj > 0 ? '+' : ''}{fmt(wrc.track_adj, '{:.0f}')} for his track record vs. contact quality</>
+                    : <>Band: middle 60% of his {pr.n_comps} comps’ next seasons · {fmt(wrc?.value, '{:.0f}')}: their weighted average</>}
               </div>
             </div>
 
-            {/* 3 · who he resembles */}
-            <div className="card-block">
+            {/* 3 · who he resembles, and how closely */}
+            <div className="card-block comps3">
               <div className="card-h">
                 <span>Closest profiles</span>
-                <span className="s">similarity: 100 = identical skill profile, 90 = a typical best match</span>
+                <span className="s">matched on skills, not results</span>
               </div>
-              <div className="card-comp head">
-                <span /><span /><span />
-                <span className="c">Similarity</span>
-                <span className="c">wRC+ the next season</span>
+              <div className="cc key">
+                <span /><span />
+                <div className="meter-key">
+                  <span>closeness</span>
+                  <span className="tick-lbl" style={{ left: `${meterPct(90)}%` }}>typical best match</span>
+                </div>
+                <span />
               </div>
               {comps.map((c, i) => (
-                <div className="card-comp" key={c.row}>
-                  <span className="rk">{i + 1}</span>
-                  <Headshot id={c.mlbam_id} name={c.name} size={34} cls="card-comp-avatar" />
-                  <span className="who">
-                    <span className="nm">{c.name}</span>
-                    <span className="sub">{c.season}{c.age != null ? ` · age ${c.age}` : ''}{c.team ? ` · ${c.team}` : ''}</span>
-                  </span>
-                  <span className="sim">{c.similarity.toFixed(0)}</span>
-                  <span className="num">
+                <div className="cc" key={c.row}>
+                  <span className="cc-rk">{i + 1}</span>
+                  <Headshot id={c.mlbam_id} name={c.name} size={60} cls="card-comp-avatar" />
+                  <div className="cc-main">
+                    <div className="cc-nm">{c.name} <span className="cc-yr">{c.season}</span></div>
+                    <div className="cc-sub">{c.team ? `${c.team} · ` : ''}age {c.age ?? '–'} · {fmt(c.outcomes.wrc_plus?.value, '{:.0f}')} wRC+ that year</div>
+                    <div className="meter" aria-label={`similarity ${c.similarity.toFixed(0)}`}>
+                      <i className="meter-fill" style={{ width: `${meterPct(c.similarity)}%` }} />
+                      <i className="meter-tick" style={{ left: `${meterPct(90)}%` }} />
+                      <b>{c.similarity.toFixed(0)}</b>
+                    </div>
+                  </div>
+                  <div className="cc-next">
                     {c.next
-                      ? <>{fmt(c.next.wrc_plus, '{:.0f}')} <Delta a={c.outcomes.wrc_plus?.value} b={c.next.wrc_plus} season={c.season} /></>
-                      : <span className="pending">{c.season + 1} pending</span>}
-                  </span>
+                      ? <><b>{fmt(c.next.wrc_plus, '{:.0f}')}</b><span>wRC+ in {c.season + 1}</span><Delta a={c.outcomes.wrc_plus?.value} b={c.next.wrc_plus} season={c.season} /></>
+                      : <><b className="pending">–</b><span>{c.season + 1} not yet played</span></>}
+                  </div>
                 </div>
               ))}
-            </div>
-
-            {/* 4 · why: his skills, with the comps sitting on the same tracks */}
-            <div className="card-block">
-              <div className="card-h"><span>The skills behind the match</span><span className="s">his percentile, <i className="sw lo" /> poor → <i className="sw hi" /> elite · <i className="sw cmp" /> his three comps</span></div>
-              <div className="card-tracks">
-                {keys.map((f) => {
-                  const m = meta.feature_meta[f] ?? meta.tracking[f];
-                  const isTrack = !meta.feature_meta[f];
-                  const stat = (p: typeof t) => (isTrack ? p.tracking?.[f] : p.features[f]);
-                  const unit = m.unit === '%' || m.unit === 'mph' ? '' : m.unit;
-                  const pa = stat(t)?.pct;
-                  return (
-                    <div className="ct" key={f}>
-                      <span className="ct-l">{SHORT[f] ?? m.label}</span>
-                      <div className="ct-t">
-                        <i className="ct-mid" />
-                        {comps.map((c) => { const p = stat(c)?.pct; return p == null ? null : <i className="ct-c" key={c.row} style={{ left: `${clampP(p)}%` }} title={`${c.name} ${c.season}`} />; })}
-                        {pa != null && <span className="ct-dot" style={{ left: `${clampP(pa)}%`, ...cellStyle(pa, m.higher_better) }}>{clampP(pa)}</span>}
-                      </div>
-                      <span className="ct-v">{fmt(stat(t)?.value, m.fmt)}{unit}{m.unit === 'mph' ? <small> mph</small> : null}</span>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
 
             <div className="card-foot">
