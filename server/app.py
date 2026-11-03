@@ -24,7 +24,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.model.engine import ComparisonModel, CompIndex, project_from_comps  # noqa: E402
-from src.model.prepare import FEATURES, OUTCOMES, CLUSTERS  # noqa: E402
+from src.model.prepare import FEATURES, OUTCOMES, CLUSTERS, next_season  # noqa: E402
 
 MODEL_DIR = PROJECT_ROOT / "data" / "model"
 DIST = PROJECT_ROOT / "frontend" / "dist"
@@ -174,6 +174,7 @@ def _row_payload(i: int, with_next: bool = True) -> Dict[str, Any]:
         "pa": _num(r.get("pa")),
         "g": _num(r.get("g")),
         "age": _num(r.get("age")),
+        "next_season": int(r["next_season"]) if pd.notna(r.get("next_season", None)) else int(next_season(int(r["season"]))),
         "result_gap": _num(r.get("result_gap")),
         "features": feats,
         "outcomes": outs,
@@ -281,7 +282,7 @@ def compare(mlbam_id: int, season: int, k: int = 10, min_pa: int = 100, same_pla
         "target": target,
         "comps": comps,
         "projection": {
-            "season": season + 1,
+            "season": target["next_season"],
             "method": "kernel-weighted mean of the next seasons of the 40 nearest comps",
             "n_comps": int(len(pool)),
             # How close the closest comps are. A typical best match scores ~90; well below that

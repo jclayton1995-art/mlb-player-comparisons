@@ -152,8 +152,8 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
                 <div className="v6-next">
                   <span className="v6-kicker">What {shortName(c.name)} did next</span>
                   {c.next
-                    ? <div className="v6-next-line"><b>{fmt(c.next.wrc_plus, '{:.0f}')}</b> wRC+ in {c.season + 1}<span className="from">from {fmt(c.outcomes.wrc_plus?.value, '{:.0f}')} in {c.season}</span><Delta a={c.outcomes.wrc_plus?.value} b={c.next.wrc_plus} season={c.season} /></div>
-                    : <div className="v6-next-line"><span className="from">{c.season + 1} hasn’t happened yet</span></div>}
+                    ? <div className="v6-next-line"><b>{fmt(c.next.wrc_plus, '{:.0f}')}</b> wRC+ in {c.next_season}<span className="from">from {fmt(c.outcomes.wrc_plus?.value, '{:.0f}')} in {c.season}</span><Delta a={c.outcomes.wrc_plus?.value} b={c.next.wrc_plus} season={c.season} /></div>
+                    : <div className="v6-next-line"><span className="from">{c.next_season} hasn’t happened yet</span></div>}
                 </div>
               </>
             ); })()}

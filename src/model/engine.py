@@ -35,7 +35,7 @@ import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.linear_model import Ridge
 
-from .prepare import FEATURES, CLUSTERS, SHRINK
+from .prepare import FEATURES, CLUSTERS, SHRINK, next_season
 
 DEFAULT_TARGETS = ["xwoba", "wrc_plus", "k_pct", "bb_pct", "iso", "babip"]
 
@@ -199,9 +199,18 @@ class ComparisonModel:
         fallback = pd.to_numeric(df.get(base), errors="coerce").values.astype(float) if base in df.columns else np.full(len(df), np.nan)
         return np.where(np.isnan(n), fallback * (0.65 if col.startswith("bbe") else 1.0), n)
 
-    def standardize_targets(self, df: pd.DataFrame, suffix: str = "_next", season_offset: int = 1) -> np.ndarray:
+    @staticmethod
+    def _next_seasons(df: pd.DataFrame) -> np.ndarray:
+        """The season each row's outcome belongs to (skips seasons the model ignores, e.g. 2020)."""
+        if "next_season" in df.columns:
+            ns = pd.to_numeric(df["next_season"], errors="coerce").astype(float).to_numpy(na_value=np.nan)
+            fb = np.array([next_season(int(x)) for x in df["season"].values], dtype=float)
+            return np.where(np.isnan(ns), fb, ns).astype(int)
+        return np.array([next_season(int(x)) for x in df["season"].values], dtype=int)
+
+    def standardize_targets(self, df: pd.DataFrame, suffix: str = "_next") -> np.ndarray:
         Y = np.full((len(df), len(self.targets)), np.nan)
-        seasons = df["season"].astype(int).values + season_offset
+        seasons = self._next_seasons(df)
         latest = max(self.target_stats)
         for j, t in enumerate(self.targets):
             x = pd.to_numeric(df[f"{t}{suffix}"], errors="coerce").values.astype(float)
@@ -262,7 +271,7 @@ class ComparisonModel:
         W = self.pca.transform(self.standardize(df))
         P = self.ridge.predict(np.hstack([W, self.context_matrix(df)]))
         out = pd.DataFrame(index=df.index)
-        seasons = df["season"].astype(int).values + 1
+        seasons = self._next_seasons(df)
         latest = max(self.target_stats)
         for j, t in enumerate(self.targets):
             vals = np.empty(len(df))

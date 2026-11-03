@@ -19,7 +19,7 @@ function Outcomes({ meta, a, b }: { meta: Meta; a: PlayerSeason; b: PlayerSeason
           <th>Results</th>
           <th className="r me">{shortName(a.name)} ’{String(a.season).slice(2)}</th>
           <th className="r">{shortName(b.name)} ’{String(b.season).slice(2)}</th>
-          <th className="r">{shortName(b.name)} ’{String(b.season + 1).slice(2)}</th>
+          <th className="r">{shortName(b.name)} ’{String(b.next_season).slice(2)}</th>
         </tr>
       </thead>
       <tbody>
@@ -66,7 +66,7 @@ export function CompList({ meta, data, onPick }: { meta: Meta; data: CompareResp
                 <span className="next">
                   {c.next
                     ? <><b>{fmt(c.next.wrc_plus, '{:.0f}')}</b><span>next year <Delta now={c.outcomes.wrc_plus?.value ?? null} next={c.next.wrc_plus} digits={0} /></span></>
-                    : <><b className="faint">–</b><span>{c.season + 1} not yet played</span></>}
+                    : <><b className="faint">–</b><span>{c.next_season} not yet played</span></>}
                 </span>
                 <span className="chev" aria-hidden="true">{isOpen ? '−' : '+'}</span>
               </button>

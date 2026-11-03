@@ -10,6 +10,7 @@ export type PlayerSeason = {
   pa: number | null;
   g: number | null;
   age: number | null;
+  next_season: number;   // the season the model treats as next (2019 -> 2021: 2020 is skipped)
   result_gap: number | null;
   features: Record<string, Stat>;
   outcomes: Record<string, Stat>;

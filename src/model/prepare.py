@@ -8,7 +8,7 @@ fixes known scaling bugs, and names everything consistently.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List
+from typing import Optional, Dict, List
 
 import numpy as np
 import pandas as pd
@@ -142,9 +142,36 @@ def _fix_scale(s: pd.Series) -> pd.Series:
     return s.where(~(s.abs() <= 1.5), s * 100)
 
 
+# Seasons the model treats as never having happened. 2020 (60 games, COVID) is dropped and
+# 2019 links straight to 2021: backtest 20.88 -> 20.78 wRC+ RMSE vs. keeping it (2026-11).
+SKIP_SEASONS = {2020}
+
+
+def season_links(seasons) -> Dict[int, Dict[str, Optional[int]]]:
+    """For each season in the data, the season the model considers 'next' and 'previous'
+    (skipping SKIP_SEASONS), so 2019's next is 2021."""
+    order = sorted(int(s) for s in set(seasons) if int(s) not in SKIP_SEASONS)
+    out = {}
+    for i, s in enumerate(order):
+        out[s] = {"next": order[i + 1] if i + 1 < len(order) else None,
+                  "prev": order[i - 1] if i > 0 else None,
+                  "prev2": order[i - 2] if i > 1 else None}
+    return out
+
+
+def next_season(season: int, links: Optional[Dict[int, Dict[str, Optional[int]]]] = None) -> Optional[int]:
+    """The season after `season` in model terms. Without links, falls back to skipping SKIP_SEASONS."""
+    if links and int(season) in links:
+        return links[int(season)]["next"]
+    s = int(season) + 1
+    while s in SKIP_SEASONS:
+        s += 1
+    return s
+
+
 def load_batters(processed_dir: Path, min_pa: int = 50) -> pd.DataFrame:
     raw = pd.read_parquet(find_raw(processed_dir))
-    df = raw.copy()
+    df = raw[~raw["season"].astype(int).isin(SKIP_SEASONS)].copy()
 
     rename = {
         "wRC+": "wrc_plus", "AVG": "avg", "OBP": "obp", "SLG": "slg", "OPS": "ops",
@@ -194,32 +221,34 @@ def load_batters(processed_dir: Path, min_pa: int = 50) -> pd.DataFrame:
     df = df[cols].drop_duplicates(["mlbam_id", "season"])
     df = df.sort_values(["mlbam_id", "season"]).reset_index(drop=True)
 
-    # Next-season link (for training + "what happened next" in the UI)
+    # Next-season link (for training + "what happened next" in the UI). Links skip SKIP_SEASONS.
+    links = season_links(df["season"].unique())
+    df["next_season"] = df["season"].map(lambda s: links[int(s)]["next"]).astype("Int64")
+    df["prev_season"] = df["season"].map(lambda s: links[int(s)]["prev"]).astype("Int64")
     link_cols = [c for c in list(OUTCOMES) + ["k_pct", "bb_pct"] if c in df.columns]
-    nxt = df[["mlbam_id", "season", "pa"] + link_cols].copy()
-    nxt["season"] = nxt["season"] - 1
-    nxt = nxt.rename(columns={c: f"{c}_next" for c in nxt.columns if c not in ("mlbam_id", "season")})
-    df = df.merge(nxt, on=["mlbam_id", "season"], how="left")
-    prev = df[["mlbam_id", "season", "pa"] + link_cols].copy()
-    prev["season"] = prev["season"] + 1
-    prev = prev.rename(columns={c: f"{c}_prev" for c in prev.columns if c not in ("mlbam_id", "season")})
-    df = df.merge(prev, on=["mlbam_id", "season"], how="left")
-    df = add_history(df)
+    nxt = df[["mlbam_id", "season", "pa"] + link_cols].rename(columns={"season": "next_season"})
+    nxt = nxt.rename(columns={c: f"{c}_next" for c in nxt.columns if c not in ("mlbam_id", "next_season")})
+    df = df.merge(nxt, on=["mlbam_id", "next_season"], how="left")
+    prev = df[["mlbam_id", "season", "pa"] + link_cols].rename(columns={"season": "prev_season"})
+    prev = prev.rename(columns={c: f"{c}_prev" for c in prev.columns if c not in ("mlbam_id", "prev_season")})
+    df = df.merge(prev, on=["mlbam_id", "prev_season"], how="left")
+    df = add_history(df, links)
     df = add_result_gap(df)
     return df
 
 
-def add_history(df: pd.DataFrame) -> pd.DataFrame:
-    """Attach each hitter's previous two seasons of every feature (plus pa/bbe) as <col>_h1, <col>_h2,
-    so the engine can blend a short season with the player's own recent history (see ModelConfig.history_weights)."""
+def add_history(df: pd.DataFrame, links: Dict[int, Dict[str, Optional[int]]]) -> pd.DataFrame:
+    """Attach each hitter's previous two seasons (in model terms, skipping SKIP_SEASONS) of every
+    feature (plus pa/bbe) as <col>_h1, <col>_h2, so the engine can blend a short season with the
+    player's own recent history (see ModelConfig.history_weights)."""
     cols = [c for c in list(FEATURES) + list(TRACKING) if c in df.columns and c != "age"] + ["pa", "bbe"]
     cols = list(dict.fromkeys(c for c in cols if c in df.columns))
     out = df
-    for lag, suf in ((1, "_h1"), (2, "_h2")):
-        h = df[["mlbam_id", "season"] + cols].copy()
-        h["season"] = h["season"] + lag
+    for key, suf in (("prev", "_h1"), ("prev2", "_h2")):
+        out[f"_s{suf}"] = out["season"].map(lambda s: links[int(s)][key]).astype("Int64")
+        h = df[["mlbam_id", "season"] + cols].rename(columns={"season": f"_s{suf}"})
         h = h.rename(columns={c: f"{c}{suf}" for c in cols})
-        out = out.merge(h, on=["mlbam_id", "season"], how="left")
+        out = out.merge(h, on=["mlbam_id", f"_s{suf}"], how="left").drop(columns=[f"_s{suf}"])
     return out
 
 

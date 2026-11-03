@@ -72,7 +72,7 @@ export function Explore({ meta, onPick }: { meta: Meta; onPick: (id: number, sea
     });
     const tail: Col[] = [
       { key: 'similarity', label: 'Best comp', hint: 'closest profile, any other player, any season', render: (r) => r.comp_name ? (
-        <div className="who"><Avatar id={r.comp_id} name={r.comp_name} size={28} /><div><div className="nm">{r.comp_name}</div><div className="sub">{r.comp_season}{r.comp_next_wrc != null ? ` · next year ${Math.round(r.comp_next_wrc)} wRC+` : ''}</div></div></div>) : '–' },
+        <div className="who"><Avatar id={r.comp_id} name={r.comp_name} size={28} /><div><div className="nm">{r.comp_name}</div><div className="sub">{r.comp_season}{r.comp_next_wrc != null ? ` · next season ${Math.round(r.comp_next_wrc)} wRC+` : ''}</div></div></div>) : '–' },
       { key: 'similarity', label: 'Similarity', hint: '100 = identical, 90 = typical best match', num: true, render: (r) => <span className="ex-sim">{fmt(r.similarity, '{:.1f}')}</span> },
       { key: 'proj_wrc', label: 'Proj. wRC+', hint: 'next season, from his 40 closest comps', num: true, render: (r) => fmt(r.proj_wrc, '{:.0f}') },
       { key: 'gap', label: 'Proj − now', hint: 'projection minus this season', num: true, render: (r) => { const g = gap(r); return g == null ? '–' : <span className={'d ' + (g >= 0 ? 'up' : 'dn')}>{g > 0 ? '+' : ''}{Math.round(g)}</span>; } },

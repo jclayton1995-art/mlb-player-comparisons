@@ -90,10 +90,11 @@ def run_backtest(
     pred_rows = []
     for T in test_seasons:
         hist = df[df["season"] <= T].reset_index(drop=True)
-        train_mask = (hist["season"] + 1) <= T          # pairs whose outcome was known at T
+        nxt = pd.to_numeric(hist["next_season"], errors="coerce") if "next_season" in hist.columns else hist["season"] + 1
+        train_mask = nxt <= T                            # pairs whose outcome was known at T
         model = ComparisonModel(cfg).fit(hist, train_mask=train_mask)
         index = CompIndex(model, hist)
-        pool = ((hist["season"] <= T - 1) & hist["pa_next"].notna()).values
+        pool = ((nxt <= T) & hist["pa_next"].notna()).values   # comps whose next season was already known
 
         targets = hist[(hist["season"] == T) & (hist["pa"] >= eval_min_pa) & (hist["pa_next"] >= eval_min_pa)]
         preds: Dict[str, Dict[str, list]] = {}
