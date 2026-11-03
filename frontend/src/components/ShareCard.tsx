@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { toPng } from 'html-to-image';
-import { fmt, headshot as cdnHeadshot, LOW_CONFIDENCE, shortName, type CompareResponse, type Meta } from '../api';
+import { fmt, headshot as cdnHeadshot, LOW_CONFIDENCE, type CompareResponse, type Meta } from '../api';
 
 const SHORT: Record<string, string> = {
   exit_velocity: 'Exit velo', ev50: 'EV50', max_exit_velocity: 'Max EV', hard_hit_pct: 'Hard-hit%', barrel_pct: 'Barrel%',
@@ -33,13 +33,17 @@ function Headshot({ id, name, size, cls }: { id: number; name: string; size: num
 /** Savant-style cell fill. The server's percentile is already oriented so higher = better
  *  (lower-is-better metrics are flipped there). 0 = deep blue, 50 = white, 100 = bright red. */
 function cellStyle(pct: number | null | undefined, higherBetter: boolean | null): React.CSSProperties | undefined {
-  if (pct == null || higherBetter == null) return undefined;
+  if (pct == null) return undefined;
+  if (higherBetter == null) return { background: '#9ba1a9', color: '#fff' };
   const p = pct;
   const t = Math.min(1, Math.abs(p - 50) / 50);             // 0 at the median, 1 at the extremes
   const [r, g, b] = p < 50 ? [31, 86, 168] : [214, 38, 44];   // blue · red
-  const mix = (c: number) => Math.round(255 + (c - 255) * t);
-  return { background: `rgb(${mix(r)},${mix(g)},${mix(b)})`, color: t > 0.55 ? '#fff' : undefined };
+  const k = 0.3 + 0.7 * t;                                   // never fully white at the median
+  const mix = (c: number) => Math.round(255 + (c - 255) * k);
+  return { background: `rgb(${mix(r)},${mix(g)},${mix(b)})`, color: k > 0.55 ? '#fff' : '#121417' };
 }
+
+const clampP = (p: number) => Math.min(99, Math.max(1, Math.round(p)));
 
 function Delta({ a, b, season }: { a: number | null | undefined; b: number | null | undefined; season: number }) {
   if (a == null || b == null) return null;
@@ -163,33 +167,29 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
               ))}
             </div>
 
-            {/* 4 · why, in numbers */}
+            {/* 4 · why: his skills, with the comps sitting on the same tracks */}
             <div className="card-block">
-              <div className="card-h"><span>The skills behind the match</span><span className="s">percentile that season: <i className="sw lo" /> poor → <i className="sw hi" /> elite</span></div>
-              <table className="card-table">
-                <thead>
-                  <tr>
-                    <th></th>
-                    <th className="me">{shortName(t.name)} <span className="yr">’{String(t.season).slice(2)}</span></th>
-                    {comps.map((c) => <th key={c.row}>{shortName(c.name)} <span className="yr">’{String(c.season).slice(2)}</span></th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {keys.map((f) => {
-                    const m = meta.feature_meta[f] ?? meta.tracking[f];
-                    const isTrack = !meta.feature_meta[f];
-                    const stat = (p: typeof t) => (isTrack ? p.tracking?.[f] : p.features[f]);
-                    const unit = m.unit === '%' || m.unit === 'mph' ? '' : m.unit;
-                    return (
-                      <tr key={f}>
-                        <td className="lab">{SHORT[f] ?? m.label}{m.unit === 'mph' ? ' (mph)' : ''}{isTrack ? <span className="yr"> 2024+</span> : null}</td>
-                        <td className="me" style={cellStyle(stat(t)?.pct, m.higher_better)}>{fmt(stat(t)?.value, m.fmt)}{unit}</td>
-                        {comps.map((c) => <td key={c.row} style={cellStyle(stat(c)?.pct, m.higher_better)}>{fmt(stat(c)?.value, m.fmt)}{unit}</td>)}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="card-h"><span>The skills behind the match</span><span className="s">his percentile, <i className="sw lo" /> poor → <i className="sw hi" /> elite · <i className="sw cmp" /> his three comps</span></div>
+              <div className="card-tracks">
+                {keys.map((f) => {
+                  const m = meta.feature_meta[f] ?? meta.tracking[f];
+                  const isTrack = !meta.feature_meta[f];
+                  const stat = (p: typeof t) => (isTrack ? p.tracking?.[f] : p.features[f]);
+                  const unit = m.unit === '%' || m.unit === 'mph' ? '' : m.unit;
+                  const pa = stat(t)?.pct;
+                  return (
+                    <div className="ct" key={f}>
+                      <span className="ct-l">{SHORT[f] ?? m.label}</span>
+                      <div className="ct-t">
+                        <i className="ct-mid" />
+                        {comps.map((c) => { const p = stat(c)?.pct; return p == null ? null : <i className="ct-c" key={c.row} style={{ left: `${clampP(p)}%` }} title={`${c.name} ${c.season}`} />; })}
+                        {pa != null && <span className="ct-dot" style={{ left: `${clampP(pa)}%`, ...cellStyle(pa, m.higher_better) }}>{clampP(pa)}</span>}
+                      </div>
+                      <span className="ct-v">{fmt(stat(t)?.value, m.fmt)}{unit}{m.unit === 'mph' ? <small> mph</small> : null}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="card-foot">
