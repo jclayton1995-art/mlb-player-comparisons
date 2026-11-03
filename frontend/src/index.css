@@ -559,3 +559,17 @@ h1, h2, h3 { margin: 0; }
 .scard { padding-top: 12px; gap: 6px; }
 .card-hero { grid-template-columns: 68px 1fr; }
 .card-avatar { width: 68px !important; height: 68px !important; }
+
+/* share card: projection number gets its headroom back; similarity meter labeled on every row */
+.card-range .marks.top { height: 34px; }
+.card-range .marks .mid { bottom: 0; }
+.card-proj .card-h { margin-bottom: 2px; }
+.meter-row { display: grid; grid-template-columns: 58px 1fr 46px; gap: 8px; align-items: center; margin-top: 6px; }
+.meter-l { font-size: 10.5px; color: var(--mute); }
+.meter-row .meter { margin: 0; }
+.meter-n { font-size: 14px; font-weight: 800; font-stretch: 90%; color: var(--navy); text-align: right; line-height: 1; }
+.meter-n small { font-size: 9.5px; font-weight: 600; color: var(--mute); margin-left: 1px; }
+.meter b.meter-n { position: static; }
+.meter-key { margin-left: 66px; margin-right: 54px; }
+.scard { gap: 6px; }
+.cc { padding: 3px 0; }

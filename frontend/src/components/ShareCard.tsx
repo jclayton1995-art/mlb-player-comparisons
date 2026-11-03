@@ -140,8 +140,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
               <div className="cc key">
                 <span /><span />
                 <div className="meter-key">
-                  <span>closeness</span>
-                  <span className="tick-lbl" style={{ left: `${meterPct(90)}%` }}>typical best match</span>
+                  <span className="tick-lbl" style={{ left: `${meterPct(90)}%` }}>90 = a typical best match</span>
                 </div>
                 <span />
               </div>
@@ -151,10 +150,13 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
                   <Headshot id={c.mlbam_id} name={c.name} size={46} cls="card-comp-avatar" />
                   <div className="cc-main">
                     <div className="cc-nm">{c.name} <span className="cc-yr">{c.season}{c.team ? ` · ${c.team}` : ''} · age {c.age ?? '–'} · {fmt(c.outcomes.wrc_plus?.value, '{:.0f}')} wRC+</span></div>
-                    <div className="meter" aria-label={`similarity ${c.similarity.toFixed(0)}`}>
-                      <i className="meter-fill" style={{ width: `${meterPct(c.similarity)}%` }} />
-                      <i className="meter-tick" style={{ left: `${meterPct(90)}%` }} />
-                      <b>{c.similarity.toFixed(0)}</b>
+                    <div className="meter-row">
+                      <span className="meter-l">Similarity</span>
+                      <div className="meter" aria-label={`similarity ${c.similarity.toFixed(0)} of 100`}>
+                        <i className="meter-fill" style={{ width: `${meterPct(c.similarity)}%` }} />
+                        <i className="meter-tick" style={{ left: `${meterPct(90)}%` }} />
+                      </div>
+                      <b className="meter-n">{c.similarity.toFixed(0)}<small>/100</small></b>
                     </div>
                   </div>
                   <div className="cc-next">
