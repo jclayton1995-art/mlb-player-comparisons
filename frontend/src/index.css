@@ -466,3 +466,31 @@ h1, h2, h3 { margin: 0; }
 .cc-next span { font-size: 11px; color: var(--mute); margin-top: 3px; }
 .cc-next .delta { font-size: 11.5px; font-weight: 600; margin: 1px 0 0; }
 .cc-next .delta.up { color: #15803d; } .cc-next .delta.dn { color: #b4432d; }
+
+/* share card: the "why" under each comp */
+.cc { padding: 9px 0; }
+.scard { gap: 12px; padding: 22px 34px 12px; }
+.why { display: flex; gap: 6px; margin-top: 8px; flex-wrap: nowrap; }
+.chip { display: inline-flex; align-items: baseline; gap: 4px; padding: 2px 7px; border-radius: 4px; background: #f1f3f5; font-size: 11px; white-space: nowrap; }
+.chip .k { color: #3b4652; }
+.chip .p { font-weight: 800; font-stretch: 90%; color: var(--ink); font-size: 12px; }
+.chip .p:first-of-type { color: var(--navy); }
+.chip .sl { color: #9aa3ae; }
+.meter { margin-top: 7px; }
+
+.scard { gap: 10px; padding: 20px 34px 12px; }
+.cc { padding: 8px 0; }
+.card-range .marks.top { height: 32px; }
+.why { margin-top: 7px; }
+.hero-text-gap { }
+
+.cc-main { min-width: 0; }
+.why { overflow: hidden; }
+.cc-next { flex: none; }
+
+.cc { grid-template-columns: 14px 60px 1fr 118px; grid-template-rows: auto auto; row-gap: 0; }
+.cc-rk, .card-comp-avatar { grid-row: 1 / 3; }
+.cc .why { grid-column: 3 / 5; margin-top: 8px; overflow: visible; }
+.cc.key { grid-template-rows: auto; }
+
+.cc { padding: 7px 0; }

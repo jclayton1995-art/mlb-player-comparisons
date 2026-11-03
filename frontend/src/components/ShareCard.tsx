@@ -15,6 +15,27 @@ function Headshot({ id, name, size, cls }: { id: number; name: string; size: num
   );
 }
 
+const SHORT: Record<string, string> = {
+  exit_velocity: 'Exit velo', ev50: 'EV50', max_exit_velocity: 'Max EV', hard_hit_pct: 'Hard-hit', barrel_pct: 'Barrel%',
+  brl_pa: 'Barrels/PA', launch_angle: 'Launch angle', anglesweetspotpercent: 'Sweet spot', gb_pct: 'Ground balls', ld_pct: 'Line drives',
+  pull_pct: 'Pull', oppo_pct: 'Oppo', pull_air_pct: 'Pulled air', chase_rate: 'Chase', zone_swing_pct: 'Zone swing',
+  zone_contact_pct: 'Z-contact', whiff_pct: 'Whiff', swstr_pct: 'SwStr', k_pct: 'K%', bb_pct: 'BB%',
+};
+const clampP = (p: number) => Math.min(99, Math.max(1, Math.round(p)));
+
+/** The three skills a match is built on: heavily weighted by the model AND close between the two hitters. */
+function sharedSkills(meta: Meta, a: { features: Record<string, { pct: number | null }> }, c: { features: Record<string, { pct: number | null }>; z_diff: Record<string, number | null> }, n = 3) {
+  const RESULTS = new Set(['k_pct', 'bb_pct']);   // model inputs, but they read as results — keep the "why" to process skills
+  const cands = meta.features
+    .filter((f) => !RESULTS.has(f) && a.features[f]?.pct != null && c.features[f]?.pct != null && c.z_diff[f] != null)
+    .map((f) => ({ f, imp: meta.feature_importance[f] ?? 0, gap: Math.abs(c.z_diff[f]!), pgap: Math.abs(a.features[f].pct! - c.features[f].pct!) }));
+  // Genuinely close first (within ~0.4 sd and 15 percentile points), ranked by model weight; then fill by closeness × weight.
+  const tight = cands.filter((x) => x.gap <= 0.4 && x.pgap <= 15).sort((x, y) => y.imp - x.imp);
+  const rest = cands.filter((x) => !tight.includes(x)).sort((x, y) => y.imp * Math.exp(-y.gap) - x.imp * Math.exp(-x.gap));
+  return (tight.length >= 2 ? tight : [...tight, ...rest]).slice(0, tight.length >= 2 ? n : 2)
+    .map(({ f }) => ({ f, label: SHORT[f] ?? meta.feature_meta[f].label, pa: clampP(a.features[f].pct!), pb: clampP(c.features[f].pct!) }));
+}
+
 /** Similarity meter on a fixed 70–100 scale so cards are comparable to each other; 90 = a typical best match. */
 const meterPct = (sim: number) => Math.min(100, Math.max(0, ((sim - 70) / 30) * 100));
 
@@ -114,7 +135,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
             <div className="card-block comps3">
               <div className="card-h">
                 <span>Closest profiles</span>
-                <span className="s">matched on skills, not results</span>
+                <span className="s">below each: the skills the match is built on, his percentile / theirs</span>
               </div>
               <div className="cc key">
                 <span /><span />
@@ -142,6 +163,11 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
                       ? <><b>{fmt(c.next.wrc_plus, '{:.0f}')}</b><span>wRC+ in {c.season + 1}</span><Delta a={c.outcomes.wrc_plus?.value} b={c.next.wrc_plus} season={c.season} /></>
                       : <><b className="pending">–</b><span>{c.season + 1} not yet played</span></>}
                   </div>
+                    <div className="why">
+                      {sharedSkills(meta, t, c).map((k) => (
+                        <span className="chip" key={k.f}><span className="k">{k.label}</span><span className="p">{k.pa}</span><span className="sl">/</span><span className="p">{k.pb}</span></span>
+                      ))}
+                    </div>
                 </div>
               ))}
             </div>
