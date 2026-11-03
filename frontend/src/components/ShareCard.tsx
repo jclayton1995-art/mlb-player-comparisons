@@ -30,7 +30,7 @@ function sharedSkills(meta: Meta, a: { features: Record<string, { pct: number | 
     .filter((f) => !RESULTS.has(f) && a.features[f]?.pct != null && c.features[f]?.pct != null && c.z_diff[f] != null)
     .map((f) => ({ f, imp: meta.feature_importance[f] ?? 0, gap: Math.abs(c.z_diff[f]!), pgap: Math.abs(a.features[f].pct! - c.features[f].pct!) }));
   // Genuinely close first (within ~0.4 sd and 15 percentile points), ranked by model weight; then fill by closeness × weight.
-  const tight = cands.filter((x) => x.gap <= 0.4 && x.pgap <= 15).sort((x, y) => y.imp - x.imp);
+  const tight = cands.filter((x) => x.gap <= 0.4 && x.pgap <= 12).sort((x, y) => y.imp - x.imp);
   const rest = cands.filter((x) => !tight.includes(x)).sort((x, y) => y.imp * Math.exp(-y.gap) - x.imp * Math.exp(-x.gap));
   return (tight.length >= 2 ? tight : [...tight, ...rest]).slice(0, tight.length >= 2 ? n : 2)
     .map(({ f }) => ({ f, label: SHORT[f] ?? meta.feature_meta[f].label, pa: clampP(a.features[f].pct!), pb: clampP(c.features[f].pct!) }));
@@ -51,7 +51,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
   const [busy, setBusy] = useState(false);
   const t = data.target;
   const pr = data.projection;
-  const wrc = pr.values.wrc_plus, xw = pr.values.xwoba;
+  const wrc = pr.values.wrc_plus;
   const comps = data.comps.slice(0, 3);
   const actual = pr.actual && pr.actual.pa != null ? pr.actual.wrc_plus : null;
   const lowConf = pr.best_similarity != null && pr.best_similarity < LOW_CONFIDENCE;
@@ -103,7 +103,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
             <div className="card-proj">
               <div className="card-h">
                 <span>{pr.season} wRC+ projection</span>
-                <span className="s">{fmt(xw?.value, '{:.3f}')} xwOBA</span>
+                <span className="s">from his {pr.n_comps} closest comps</span>
               </div>
               <div className="card-range">
                 <div className="marks top">
@@ -125,7 +125,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
               <div className="card-cap">
                 {lowConf
                   ? <>Few close comps: best match {fmt(pr.best_similarity, '{:.0f}')} vs. a typical 90, so read the band wide</>
-                  : <>Band: the middle 60% of what his {pr.n_comps} closest comps did the next season · {fmt(wrc?.value, '{:.0f}')}: their weighted average</>}
+                  : <>Band: the middle 60% of what they did the next season</>}
               </div>
             </div>
 
@@ -133,7 +133,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
             <div className="card-block comps3">
               <div className="card-h">
                 <span>Closest profiles</span>
-                <span className="s">numbers are percentile ranks, each in his own season</span>
+                <span className="s">under each: the skills they share, as percentile ranks</span>
               </div>
               <div className="cc key">
                 <span /><span />
@@ -147,7 +147,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
                   <span className="cc-rk">{i + 1}</span>
                   <Headshot id={c.mlbam_id} name={c.name} size={46} cls="card-comp-avatar" />
                   <div className="cc-main">
-                    <div className="cc-nm">{c.name} <span className="cc-yr">{c.season}{c.team ? ` · ${c.team}` : ''} · age {c.age ?? '–'} · {fmt(c.outcomes.wrc_plus?.value, '{:.0f}')} wRC+</span></div>
+                    <div className="cc-nm">{c.name} <span className="cc-yr">{c.season}{c.team ? ` · ${c.team}` : ''} · age {c.age ?? '–'}</span></div>
                     <div className="meter-row">
                       <span className="meter-l">Similarity</span>
                       <div className="meter" aria-label={`similarity ${c.similarity.toFixed(0)} of 100`}>
@@ -163,7 +163,7 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
                       : <><b className="pending">–</b><span>{c.season + 1} not yet played</span></>}
                   </div>
                     <table className="why">
-                    <thead><tr><th className="who">where they line up</th>{sharedSkills(meta, t, c).map((k) => <th key={k.f}>{k.label}</th>)}</tr></thead>
+                    <thead><tr><th className="who" />{sharedSkills(meta, t, c).map((k) => <th key={k.f}>{k.label}</th>)}</tr></thead>
                     <tbody>
                       <tr className="a"><td className="who">{shortName(t.name)}</td>{sharedSkills(meta, t, c).map((k) => <td key={k.f}>{k.pa}</td>)}</tr>
                       <tr className="b"><td className="who">{shortName(c.name)}</td>{sharedSkills(meta, t, c).map((k) => <td key={k.f}>{k.pb}</td>)}</tr>

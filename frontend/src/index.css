@@ -573,3 +573,25 @@ h1, h2, h3 { margin: 0; }
 .meter-key { margin-left: 66px; margin-right: 54px; }
 .scard { gap: 6px; }
 .cc { padding: 3px 0; }
+
+/* share card: declutter — fewer words, more air */
+.scard { gap: 10px; padding: 20px 34px 10px; }
+.cc { padding: 7px 0; }
+.card-cap { font-size: 10.5px; }
+.meter-key { height: 14px; margin-bottom: 0; }
+.why th.who { padding: 0; }
+.cc-next span { font-size: 11px; }
+
+.scard { gap: 8px; padding-top: 16px; }
+.cc { padding: 5px 0; }
+
+.scard { gap: 7px; padding-top: 14px; }
+.cc { padding: 4px 0; }
+.card-stats .v { font-size: 19px; }
+.card-range .marks.top { height: 30px; }
+.card-range .marks.bottom { height: 15px; }
+
+.cc .why { margin-top: 2px; }
+.why td { line-height: 1.1; }
+.scard { padding-bottom: 6px; gap: 6px; }
+.card-foot { font-size: 10px; }
