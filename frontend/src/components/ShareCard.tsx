@@ -161,9 +161,9 @@ export function ShareCard({ data, meta, onClose }: { data: CompareResponse; meta
             {/* payoff: the projection, on paper */}
             <div className="v6-proj">
               <div className="v6-proj-l">
-                <span className="v6-kicker dark">{pr.season} projection</span>
+                <span className="v6-kicker dark">{shortName(t.name)}’s {pr.season} projection</span>
                 <span className="v6-proj-n"><b>{fmt(wrc?.value, '{:.0f}')}</b> wRC+</span>
-                <span className="v6-proj-sub">{fmt(t.outcomes.wrc_plus?.value, '{:.0f}')} wRC+ in {t.season}</span>
+                <span className="v6-proj-sub">{(wrc?.value ?? 0) >= (t.outcomes.wrc_plus?.value ?? 0) ? 'up from' : 'down from'} his {fmt(t.outcomes.wrc_plus?.value, '{:.0f}')} in {t.season}</span>
               </div>
               <div className="v6-proj-r">
                 <div className="card-range v6-range">
